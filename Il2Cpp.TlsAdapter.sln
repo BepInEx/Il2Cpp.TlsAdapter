@@ -2,6 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Il2Cpp.TlsAdapter", "Il2Cpp.TlsAdapter\Il2Cpp.TlsAdapter.csproj", "{CF90921B-E5D7-4065-9969-25D7C38A7D83}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Metadata", "Metadata", "{81F8308B-46B4-4B79-A389-DBAA4DCA90EB}"
+ProjectSection(SolutionItems) = preProject
+	README.md = README.md
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
