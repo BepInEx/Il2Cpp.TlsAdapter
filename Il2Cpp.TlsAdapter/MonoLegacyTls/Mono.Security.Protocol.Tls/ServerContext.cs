@@ -22,14 +22,15 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Collections;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 using Mono.Security.Protocol.Tls.Handshake;
-using Mono.Security.Interface;
-using MonoX509 = Mono.Security.X509;
+using MonoSecurity::Mono.Security.Interface;
+using MonoX509 = MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls
 {

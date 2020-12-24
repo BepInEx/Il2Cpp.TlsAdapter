@@ -1,6 +1,7 @@
 // Adapted from https://github.com/Unity-Technologies/mono/tree/24ce88f8a387f93884225c5b31ac42655a9df344/mcs/class/System/Mono.UnityTls
 
-using Mono.Security.Interface;
+extern alias MonoSecurity;
+using MonoSecurity::Mono.Security.Interface;
 
 // ReSharper disable CheckNamespace
 namespace Mono.Unity

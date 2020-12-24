@@ -22,6 +22,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Collections;
 using System.IO;
@@ -32,7 +33,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 using Mono.Security.Protocol.Tls.Handshake;
-using Mono.Security.Interface;
+using MonoSecurity::Mono.Security.Interface;
 
 namespace Mono.Security.Protocol.Tls
 {
@@ -52,7 +53,7 @@ namespace Mono.Security.Protocol.Tls
 #else
 	public
 #endif
-	delegate ValidationResult CertificateValidationCallback2 (Mono.Security.X509.X509CertificateCollection collection);
+	delegate ValidationResult CertificateValidationCallback2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection);
 
 #if INSIDE_SYSTEM
 	internal
@@ -213,7 +214,7 @@ namespace Mono.Security.Protocol.Tls
 
 		#region IDisposable Methods
 
-		protected override void Dispose(bool disposing)
+		public override void Dispose(bool disposing)
 		{
 			base.Dispose(disposing);
 
@@ -598,7 +599,7 @@ namespace Mono.Security.Protocol.Tls
 			get { return ServerCertValidation2 != null; }
 		}
 
-		internal override ValidationResult OnRemoteCertificateValidation2 (Mono.Security.X509.X509CertificateCollection collection)
+		internal override ValidationResult OnRemoteCertificateValidation2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection)
 		{
 			CertificateValidationCallback2 cb = ServerCertValidation2;
 			if (cb != null)
@@ -623,7 +624,7 @@ namespace Mono.Security.Protocol.Tls
 			return base.RaiseRemoteCertificateValidation(certificate, certificateErrors);
 		}
 
-		internal virtual ValidationResult RaiseServerCertificateValidation2 (Mono.Security.X509.X509CertificateCollection collection)
+		internal virtual ValidationResult RaiseServerCertificateValidation2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection)
 		{
 			return base.RaiseRemoteCertificateValidation2 (collection);
 		}

@@ -71,7 +71,7 @@ namespace Mono.Security.Protocol.Tls
 			this.hashing = false;
 		}
 
-		protected override byte[] HashFinal()
+		public override byte[] HashFinal()
 		{
 			if (!this.hashing)
 			{
@@ -110,7 +110,7 @@ namespace Mono.Security.Protocol.Tls
 			return result;
 		}
 
-		protected override void HashCore(byte[] array, int ibStart, int cbSize)
+		public override void HashCore(byte[] array, int ibStart, int cbSize)
 		{
 			if (!this.hashing)
 			{

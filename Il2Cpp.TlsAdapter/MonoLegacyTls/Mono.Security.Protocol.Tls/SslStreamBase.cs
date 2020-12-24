@@ -22,6 +22,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Collections;
 using System.IO;
@@ -31,7 +32,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
-using Mono.Security.Interface;
+using MonoSecurity::Mono.Security.Interface;
 
 namespace Mono.Security.Protocol.Tls
 {
@@ -183,7 +184,7 @@ namespace Mono.Security.Protocol.Tls
 															X509CertificateCollection serverRequestedCertificates);
 
 		internal abstract bool OnRemoteCertificateValidation(X509Certificate certificate, int[] errors);
-		internal abstract ValidationResult OnRemoteCertificateValidation2 (Mono.Security.X509.X509CertificateCollection collection);
+		internal abstract ValidationResult OnRemoteCertificateValidation2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection);
 		internal abstract bool HaveRemoteValidation2Callback { get; }
 
 		internal abstract AsymmetricAlgorithm OnLocalPrivateKeySelection(X509Certificate certificate, string targetHost);
@@ -205,7 +206,7 @@ namespace Mono.Security.Protocol.Tls
 			return OnRemoteCertificateValidation(certificate, errors);
 		}
 
-		internal ValidationResult RaiseRemoteCertificateValidation2 (Mono.Security.X509.X509CertificateCollection collection)
+		internal ValidationResult RaiseRemoteCertificateValidation2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection)
 		{
 			return OnRemoteCertificateValidation2 (collection);
 		}
@@ -317,7 +318,7 @@ namespace Mono.Security.Protocol.Tls
 			}
 		}
 
-		public X509Certificate ServerCertificate
+		public MonoSecurity::Mono.Security.X509.X509Certificate ServerCertificate
 		{
 			get
 			{
@@ -326,7 +327,7 @@ namespace Mono.Security.Protocol.Tls
 					if (this.context.ServerSettings.Certificates != null &&
 						this.context.ServerSettings.Certificates.Count > 0)
 					{
-						return new X509Certificate(this.context.ServerSettings.Certificates[0].RawData);
+						return new MonoSecurity::Mono.Security.X509.X509Certificate(this.context.ServerSettings.Certificates[0].RawData);
 					}
 				}
 
@@ -335,7 +336,7 @@ namespace Mono.Security.Protocol.Tls
 		}
 
 		// this is used by Mono's certmgr tool to download certificates
-		internal Mono.Security.X509.X509CertificateCollection ServerCertificates
+		internal MonoSecurity::Mono.Security.X509.X509CertificateCollection ServerCertificates
 		{
 			get { return context.ServerSettings.Certificates; }
 		}
@@ -1167,7 +1168,7 @@ namespace Mono.Security.Protocol.Tls
 			this.Dispose(false);
 		}
 
-		protected override void Dispose (bool disposing)
+		public override void Dispose (bool disposing)
 		{
 			if (!this.disposed)
 			{

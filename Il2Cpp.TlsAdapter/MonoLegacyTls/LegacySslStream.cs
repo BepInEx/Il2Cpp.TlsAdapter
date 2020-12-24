@@ -32,12 +32,13 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using MonoCipherAlgorithmType = Mono.Security.Protocol.Tls.CipherAlgorithmType;
 using MonoHashAlgorithmType = Mono.Security.Protocol.Tls.HashAlgorithmType;
 using MonoExchangeAlgorithmType = Mono.Security.Protocol.Tls.ExchangeAlgorithmType;
 using MonoSecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 using Mono.Security.Protocol.Tls;
-using Mono.Security.Interface;
+using MonoSecurity::Mono.Security.Interface;
 
 using CipherAlgorithmType = System.Security.Authentication.CipherAlgorithmType;
 using HashAlgorithmType = System.Security.Authentication.HashAlgorithmType;

@@ -18,6 +18,7 @@
         <Reference Include="Mono.Security">
             <HintPath>..\lib\Mono.Security.dll</HintPath>
             <Private>false</Private>
+            <Aliases>MonoSecurity</Aliases>
         </Reference>
         <Reference Include="mscorlib">
             <HintPath>..\lib\mscorlib.dll</HintPath>

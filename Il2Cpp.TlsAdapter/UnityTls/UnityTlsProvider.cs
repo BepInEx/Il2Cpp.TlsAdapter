@@ -1,5 +1,6 @@
 // Adapted from https://github.com/Unity-Technologies/mono/tree/24ce88f8a387f93884225c5b31ac42655a9df344/mcs/class/System/Mono.UnityTls
 
+extern alias MonoSecurity;
 using System;
 using System.IO;
 using System.Net.Security;
@@ -7,7 +8,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Mono.Net.Security;
-using Mono.Security.Interface;
+using MonoSecurity::Mono.Security.Interface;
 using size_t = System.IntPtr;
 
 // ReSharper disable CheckNamespace

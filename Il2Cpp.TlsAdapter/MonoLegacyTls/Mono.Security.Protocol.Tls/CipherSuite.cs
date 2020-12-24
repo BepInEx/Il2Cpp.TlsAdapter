@@ -22,6 +22,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.IO;
 using System.Text;
@@ -29,7 +30,7 @@ using System.Security.Cryptography;
 
 using Mono.Security;
 using Mono.Security.Cryptography;
-using M = Mono.Security.Cryptography;
+using M = MonoSecurity::Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls
 {
