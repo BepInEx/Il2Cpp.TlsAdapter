@@ -23,6 +23,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography;
 
@@ -99,7 +100,7 @@ namespace Mono.Security.Protocol.Tls.Handshake.Client
 			// Write Supported Cipher suites
 			for (int i = 0; i < this.Context.SupportedCiphers.Count; i++)
 			{
-				this.Write((short)this.Context.SupportedCiphers[i].Code);
+				this.Write((short)((IList<CipherSuite>)this.Context.SupportedCiphers)[i].Code);
 			}
 
 			// Compression methods length

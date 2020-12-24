@@ -22,18 +22,20 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Net;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using X509Cert = System.Security.Cryptography.X509Certificates;
 
-using Mono.Security.X509;
-using Mono.Security.X509.Extensions;
+using MonoSecurity::Mono.Security.X509;
+using MonoSecurity::Mono.Security.X509.Extensions;
 
-using Mono.Security.Interface;
+using MonoSecurity::Mono.Security.Interface;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
@@ -387,9 +389,9 @@ namespace Mono.Security.Protocol.Tls.Handshake.Client
 
 			if (elements.Count == 1)
 			{
-				if (elements[0].Success)
+				if (elements.GetMatch(0).Success)
 				{
-					domainName = elements[0].Groups[1].Value.ToString();
+					domainName = ((IList<Group>)elements.GetMatch(0).Groups)[1].Value.ToString();
 				}
 			}
 
