@@ -23,6 +23,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
@@ -131,7 +132,7 @@ namespace Mono.Security.Protocol.Tls.Handshake.Server
 			{
 				if ((index = this.Context.SupportedCiphers.IndexOf(this.cipherSuites[i])) != -1)	
 				{
-					this.Context.Negotiating.Cipher = this.Context.SupportedCiphers[index];
+					this.Context.Negotiating.Cipher = ((IList<CipherSuite>)this.Context.SupportedCiphers)[index];
 					break;
 				}
 			}

@@ -22,10 +22,11 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Text;
 using Mono.Security;
-using Mono.Security.X509;
+using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {

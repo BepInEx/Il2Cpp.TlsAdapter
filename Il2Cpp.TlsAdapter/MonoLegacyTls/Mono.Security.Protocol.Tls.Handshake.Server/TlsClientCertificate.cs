@@ -22,11 +22,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+extern alias MonoSecurity;
 using System;
 using System.Collections;
 using SSCX = System.Security.Cryptography.X509Certificates;
-using Mono.Security.X509;
-using Mono.Security.X509.Extensions;
+using MonoSecurity::Mono.Security.X509;
+using MonoSecurity::Mono.Security.X509.Extensions;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
