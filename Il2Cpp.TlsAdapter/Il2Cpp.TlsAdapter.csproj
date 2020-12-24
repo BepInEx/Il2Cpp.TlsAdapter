@@ -34,7 +34,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="HarmonyX" Version="2.3.1" IncludeAssets="compile"/>
+        <PackageReference Include="HarmonyX" Version="2.3.1" IncludeAssets="compile" />
     </ItemGroup>
 
 </Project>
