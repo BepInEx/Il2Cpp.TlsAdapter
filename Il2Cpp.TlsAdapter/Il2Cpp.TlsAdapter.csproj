@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net472</TargetFramework>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="Mono.Security">
+            <HintPath>..\lib\Mono.Security.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="mscorlib">
+            <HintPath>..\lib\mscorlib.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="System">
+            <HintPath>..\lib\System.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="UnhollowerBaseLib">
+            <HintPath>..\lib\UnhollowerBaseLib.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="HarmonyX" Version="2.3.1" IncludeAssets="compile"/>
+    </ItemGroup>
+
+</Project>
