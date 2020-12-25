@@ -170,7 +170,28 @@ namespace Mono.Security.Protocol.Tls
 				}
 			}
 		}
+		
+		public IAsyncResult BeginHandshake()
+		{
+			if (this.MightNeedHandshake)
+			{
+				InternalAsyncResult ar = new InternalAsyncResult(null, null, null, 0, 0, false, false);
+				//if something already started negotiation, wait for it.
+				//otherwise end it ourselves.
+				BeginNegotiateHandshake(ar);
+				return ar;
+			}
+			else
+			{
+				return null;
+			}
+		}
 
+		public void EndHandshake(IAsyncResult result)
+		{
+			EndNegotiateHandshake(result as InternalAsyncResult);
+		}
+		
 		#endregion
 
 		#region Abstracts/Virtuals
@@ -318,7 +339,7 @@ namespace Mono.Security.Protocol.Tls
 			}
 		}
 
-		public MonoSecurity::Mono.Security.X509.X509Certificate ServerCertificate
+		public X509Certificate ServerCertificate
 		{
 			get
 			{
@@ -327,7 +348,8 @@ namespace Mono.Security.Protocol.Tls
 					if (this.context.ServerSettings.Certificates != null &&
 						this.context.ServerSettings.Certificates.Count > 0)
 					{
-						return new MonoSecurity::Mono.Security.X509.X509Certificate(this.context.ServerSettings.Certificates[0].RawData);
+						
+						return new X509Certificate(this.context.ServerSettings.Certificates[0].RawData);
 					}
 				}
 

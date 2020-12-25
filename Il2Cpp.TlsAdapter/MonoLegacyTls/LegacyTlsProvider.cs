@@ -23,24 +23,26 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using MSI = Mono.Security.Interface;
+
+extern alias MonoSecurity;
 
 using System;
 using System.IO;
-using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Authentication;
+using Il2Cpp.TlsAdapter.MonoLegacyTls;
+using MonoSecurity::Mono.Security.Interface;
 
 namespace Mono.Net.Security
 {
 	/*
 	 * Strictly private - do not use outside the Mono.Net.Security directory.
 	 */
-	class LegacyTlsProvider : MSI.MonoTlsProvider
+	class LegacyTlsProvider : MobileTlsProvider
 	{
 		public override Guid ID {
-			get { return MonoTlsProviderFactory.LegacyId; }
+			get { return Guid.Empty; } // TODO: Fix
 		}
 
 		public override string Name {
@@ -67,30 +69,19 @@ namespace Mono.Net.Security
 			get { return SslProtocols.Tls; }
 		}
 
-		public override MSI.IMonoSslStream CreateSslStream (
-			Stream innerStream, bool leaveInnerStreamOpen,
-			MSI.MonoTlsSettings settings = null)
+		public override MobileAuthenticatedStream CreateSslStream(SslStream sslStream, Stream innerStream, bool leaveInnerStreamOpen,
+			MonoTlsSettings settings)
 		{
-			return SslStream.CreateMonoSslStream (innerStream, leaveInnerStreamOpen, this, settings);
+			return new NewLegacySslStream(innerStream, leaveInnerStreamOpen, sslStream, settings, this);
 		}
 
-		public override MSI.IMonoSslStream CreateSslStreamInternal (
-			SslStream sslStream, Stream innerStream, bool leaveInnerStreamOpen,
-			MSI.MonoTlsSettings settings)
-		{
-			return new Private.LegacySslStream (innerStream, leaveInnerStreamOpen, sslStream, this, settings);
-		}
-
-		internal override bool ValidateCertificate (
-			MSI.ICertificateValidator2 validator, string targetHost, bool serverMode,
-			X509CertificateCollection certificates, bool wantsChain, ref X509Chain chain,
-			ref MSI.MonoSslPolicyErrors errors, ref int status11)
+		public override bool ValidateCertificate(ChainValidationHelper validator, string targetHost, bool serverMode,
+			X509CertificateCollection certificates, bool wantsChain, ref X509Chain chain, ref SslPolicyErrors errors,
+			ref int status11)
 		{
 			if (wantsChain)
 				chain = SystemCertificateValidator.CreateX509Chain (certificates);
-			var xerrors = (SslPolicyErrors)errors;
-			var result = SystemCertificateValidator.Evaluate (validator.Settings, targetHost, certificates, chain, ref xerrors, ref status11);
-			errors = (MSI.MonoSslPolicyErrors)xerrors;
+			var result = SystemCertificateValidator.Evaluate (validator.Settings, targetHost, certificates, chain, ref errors, ref status11);
 			return result;
 		}
 	}

@@ -72,7 +72,7 @@ namespace Mono.Net.Security.Private
 
 		#region Constructors
 
-		public LegacySslStream (Stream innerStream, bool leaveInnerStreamOpen, SslStream owner, MonoTlsProvider provider, MonoTlsSettings settings)
+		public LegacySslStream (Stream innerStream, bool leaveInnerStreamOpen, SslStream owner, MobileTlsProvider provider, MonoTlsSettings settings)
 			: base (innerStream, leaveInnerStreamOpen)
 		{
 			SslStream = owner;
@@ -465,7 +465,7 @@ namespace Mono.Net.Security.Private
 				serverCertificate, clientCertificateRequired, enabledSslProtocols, checkCertificateRevocation, null, null));
 		}
 
-		protected override void Dispose (bool disposing)
+		public override void Dispose (bool disposing)
 		{
 			if (disposing) {
 				if (ssl_stream != null)
