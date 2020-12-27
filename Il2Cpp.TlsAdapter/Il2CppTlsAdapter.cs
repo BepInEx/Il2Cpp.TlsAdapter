@@ -28,7 +28,7 @@ namespace Il2Cpp.TlsAdapter
 
         [HarmonyPatch(typeof(MonoTlsProviderFactory), "PopulateProviders")]
         [HarmonyPostfix]
-        public static void PopulateProviders(
+        private static void PopulateProviders(
             ref Dictionary<string, Tuple<Guid, string>> ___providerRegistration)
         {
             ___providerRegistration[LegacyTlsProvider.ProviderName] = new Tuple<Guid, string>(LegacyTlsProvider.Guid,
@@ -39,7 +39,7 @@ namespace Il2Cpp.TlsAdapter
 
         [HarmonyPatch(typeof(MonoTlsProviderFactory), "CreateDefaultProviderImpl")]
         [HarmonyPrefix]
-        public static bool CreateDefaultProviderImpl(ref MobileTlsProvider __result)
+        private static bool CreateDefaultProviderImpl(ref MobileTlsProvider __result)
         {
             if (UnityTls.IsSupported)
                 __result = new UnityTlsProvider();
