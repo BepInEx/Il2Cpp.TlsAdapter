@@ -219,22 +219,29 @@ namespace Il2Cpp.TlsAdapter.MonoLegacyTls
 
         public override void Flush()
         {
-            throw new System.NotImplementedException();
+            sslStream.Flush();
         }
 
         public override (int ret, bool wantMore) Read(byte[] buffer, int offset, int count)
         {
-            throw new System.NotImplementedException();
+            // Ghetto trick: simply read all the data and block as needed.
+            // TODO: Check if this causes extremely long blocking
+            return (sslStream.Read(buffer, offset, count), false);
         }
 
         public override (int ret, bool wantMore) Write(byte[] buffer, int offset, int count)
         {
-            throw new System.NotImplementedException();
+            // Ghetto trick: simply write all the data and block as needed.
+            // TODO: Check if this causes extremely long blocking
+            sslStream.Write(buffer, offset, count);
+            return (count, false);
         }
 
         public override void Shutdown()
         {
             connectionInfo = null;
+            sslStream.Dispose();
+            sslStream = null;
         }
 
         public override bool PendingRenegotiation()
