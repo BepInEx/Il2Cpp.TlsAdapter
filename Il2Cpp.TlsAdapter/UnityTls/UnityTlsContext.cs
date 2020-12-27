@@ -59,9 +59,16 @@ namespace Mono.Unity
             // Map selected protocols as best as we can.
             var protocolRange = new UnityTls.unitytls_tlsctx_protocolrange
             {
-                min = UnityTlsConversions.GetMinProtocol(opts.EnabledSslProtocols),
-                max = UnityTlsConversions.GetMaxProtocol(opts.EnabledSslProtocols)
+                min = UnityTlsConversions.GetMinProtocol(EnabledProtocols),
+                max = UnityTlsConversions.GetMaxProtocol(EnabledProtocols)
             };
+
+            if (protocolRange.max < protocolRange.min)
+            {
+                var tmp = protocolRange.max;
+                protocolRange.max = protocolRange.min;
+                protocolRange.min = tmp;
+            }
 
             readCallback = ReadCallback;
             writeCallback = WriteCallback;
