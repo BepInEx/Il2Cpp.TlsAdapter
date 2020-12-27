@@ -28,5 +28,10 @@ To do this:
     Il2CppTlsAdapter.Initialize();
     ```
    This will initialize the adapter and automatically pick the best available TLS provider.
+4. *Optional:* To enable UnityTLS, you need to provide pointer to the UnityTLS native interface with:
+   ```csharp
+   Il2CppTlsAdapter.Options.UnityTlsInterface = /* Obtain and assign the interface pointer */:
+   ```
+   If no interface is specified, LegacyTls is used instead.
 
 **WIP** The tool is not ready yet: for example UnityTls is not configurable and `Initialze` doesn't do much interesting at the moment.
