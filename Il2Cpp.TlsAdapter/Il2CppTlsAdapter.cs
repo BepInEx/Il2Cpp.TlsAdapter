@@ -43,9 +43,10 @@ namespace Il2Cpp.TlsAdapter
         {
             if (UnityTls.IsSupported)
                 __result = new UnityTlsProvider();
-            if (MonoTlsProviderFactory.IsProviderSupported("btls") || MonoTlsProviderFactory.IsProviderSupported("apple"))
+            else if (MonoTlsProviderFactory.IsProviderSupported("btls") || MonoTlsProviderFactory.IsProviderSupported("apple"))
                 return true;
-            __result = new LegacyTlsProvider();
+            else
+                __result = new LegacyTlsProvider();
             return false;
         }
     }
