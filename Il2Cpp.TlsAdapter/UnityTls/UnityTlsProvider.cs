@@ -16,9 +16,11 @@ namespace Mono.Unity
 {
     internal unsafe class UnityTlsProvider : MobileTlsProvider
     {
-        public override string Name => "unitytls";
-
-        public override Guid ID => Guid.Empty; // TODO: Change to unique ID
+        public static readonly Guid Guid = new Guid("9b378a65-b817-4b78-853a-b9bc32de5d0b");
+        public static readonly string ProviderName = "unitytls";
+        
+        public override string Name => ProviderName;
+        public override Guid ID => Guid;
         public override bool SupportsSslStream => true;
         public override bool SupportsMonoExtensions => true;
         public override bool SupportsConnectionInfo => true;

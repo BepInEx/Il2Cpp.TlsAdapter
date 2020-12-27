@@ -40,9 +40,12 @@ namespace Mono.Net.Security
      */
     internal class LegacyTlsProvider : MobileTlsProvider
     {
-        public override Guid ID => Guid.Empty; // TODO: Fix
+        public static readonly Guid Guid = new Guid("c3dea87f-2dda-4764-b729-a5175320ea12");
+        public static readonly string ProviderName = "legacy";
+        
+        public override Guid ID => Guid; // TODO: Fix
 
-        public override string Name => "legacy";
+        public override string Name => ProviderName;
 
         public override bool SupportsSslStream => true;
 

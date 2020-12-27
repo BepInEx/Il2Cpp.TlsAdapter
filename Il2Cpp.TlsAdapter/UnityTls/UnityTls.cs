@@ -3,6 +3,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Il2Cpp.TlsAdapter;
 
 // ReSharper disable CheckNamespace
 namespace Mono.Unity
@@ -120,7 +121,7 @@ namespace Mono.Unity
             {
                 if (marshalledInterface == null)
                 {
-                    var rawInterface = GetUnityTlsInterface();
+                    var rawInterface = Il2CppTlsAdapter.Options.UnityTlsInterface;
                     if (rawInterface == IntPtr.Zero)
                         return null;
                     marshalledInterface = Marshal.PtrToStructure<unitytls_interface_struct>(rawInterface);
@@ -129,9 +130,6 @@ namespace Mono.Unity
                 return marshalledInterface;
             }
         }
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        private static extern IntPtr GetUnityTlsInterface();
 
         [StructLayout(LayoutKind.Sequential)]
         public struct unitytls_errorstate
