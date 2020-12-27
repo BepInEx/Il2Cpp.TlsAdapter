@@ -72,7 +72,7 @@ namespace Mono.Net.Security
 		public override MobileAuthenticatedStream CreateSslStream(SslStream sslStream, Stream innerStream, bool leaveInnerStreamOpen,
 			MonoTlsSettings settings)
 		{
-			return new NewLegacySslStream(innerStream, leaveInnerStreamOpen, sslStream, settings, this);
+			return new LegacySslStream(innerStream, leaveInnerStreamOpen, sslStream, settings, this);
 		}
 
 		public override bool ValidateCertificate(ChainValidationHelper validator, string targetHost, bool serverMode,
