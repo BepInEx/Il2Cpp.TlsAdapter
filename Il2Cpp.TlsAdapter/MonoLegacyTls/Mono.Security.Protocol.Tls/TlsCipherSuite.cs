@@ -22,131 +22,131 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class TlsCipherSuite : CipherSuite
-	{
-		private const int MacHeaderLength = 13;
-		private byte[] header;
-		private object headerLock = new object ();
+    internal class TlsCipherSuite : CipherSuite
+    {
+        private const int MacHeaderLength = 13;
+        private readonly object headerLock = new object();
+        private byte[] header;
 
-		#region Constructors
-		
-		public TlsCipherSuite(
-			short code, string name, CipherAlgorithmType cipherAlgorithmType, 
-			HashAlgorithmType hashAlgorithmType, ExchangeAlgorithmType exchangeAlgorithmType,
-			bool exportable, bool blockMode, byte keyMaterialSize, 
-			byte expandedKeyMaterialSize, short effectiveKeyBytes, 
-			byte ivSize, byte blockSize) 
-			:base(code, name, cipherAlgorithmType, hashAlgorithmType, 
-			exchangeAlgorithmType, exportable, blockMode, keyMaterialSize, 
-			expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize)
-		{
-		}
+        #region Constructors
 
-		#endregion
+        public TlsCipherSuite(
+            short code, string name, CipherAlgorithmType cipherAlgorithmType,
+            HashAlgorithmType hashAlgorithmType, ExchangeAlgorithmType exchangeAlgorithmType,
+            bool exportable, bool blockMode, byte keyMaterialSize,
+            byte expandedKeyMaterialSize, short effectiveKeyBytes,
+            byte ivSize, byte blockSize)
+            : base(code, name, cipherAlgorithmType, hashAlgorithmType,
+                exchangeAlgorithmType, exportable, blockMode, keyMaterialSize,
+                expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize)
+        {
+        }
 
-		#region MAC Generation Methods
+        #endregion
 
-		public override byte[] ComputeServerRecordMAC(ContentType contentType, byte[] fragment)
-		{
-			lock (headerLock) {
-				if (header == null)
-					header = new byte [MacHeaderLength];
+        #region MAC Generation Methods
 
-				ulong seqnum = (Context is ClientContext) ? Context.ReadSequenceNumber : Context.WriteSequenceNumber;
-				Write (header, 0, seqnum);
-				header [8] = (byte)contentType;
-				Write (header, 9, this.Context.Protocol);
-				Write (header, 11, (short)fragment.Length);
+        public override byte[] ComputeServerRecordMAC(ContentType contentType, byte[] fragment)
+        {
+            lock (headerLock)
+            {
+                if (header == null)
+                    header = new byte [MacHeaderLength];
 
-				HashAlgorithm mac = this.ServerHMAC;
-				mac.TransformBlock (header, 0, header.Length, header, 0);
-				mac.TransformBlock (fragment, 0, fragment.Length, fragment, 0);
-				// hack, else the method will allocate a new buffer of the same length (negative half the optimization)
-				mac.TransformFinalBlock (CipherSuite.EmptyArray, 0, 0);
-				return mac.Hash;
-			}
-		}
+                var seqnum = Context is ClientContext ? Context.ReadSequenceNumber : Context.WriteSequenceNumber;
+                Write(header, 0, seqnum);
+                header[8] = (byte) contentType;
+                Write(header, 9, Context.Protocol);
+                Write(header, 11, (short) fragment.Length);
 
-		public override byte[] ComputeClientRecordMAC(ContentType contentType, byte[] fragment)
-		{
-			lock (headerLock) {
-				if (header == null)
-					header = new byte [MacHeaderLength];
+                HashAlgorithm mac = ServerHMAC;
+                mac.TransformBlock(header, 0, header.Length, header, 0);
+                mac.TransformBlock(fragment, 0, fragment.Length, fragment, 0);
+                // hack, else the method will allocate a new buffer of the same length (negative half the optimization)
+                mac.TransformFinalBlock(EmptyArray, 0, 0);
+                return mac.Hash;
+            }
+        }
 
-				ulong seqnum = (Context is ClientContext) ? Context.WriteSequenceNumber : Context.ReadSequenceNumber;
-				Write (header, 0, seqnum);
-				header [8] = (byte)contentType;
-				Write (header, 9, this.Context.Protocol);
-				Write (header, 11, (short)fragment.Length);
+        public override byte[] ComputeClientRecordMAC(ContentType contentType, byte[] fragment)
+        {
+            lock (headerLock)
+            {
+                if (header == null)
+                    header = new byte [MacHeaderLength];
 
-				HashAlgorithm mac = this.ClientHMAC;
-				mac.TransformBlock (header, 0, header.Length, header, 0);
-				mac.TransformBlock (fragment, 0, fragment.Length, fragment, 0);
-				// hack, else the method will allocate a new buffer of the same length (negative half the optimization)
-				mac.TransformFinalBlock (CipherSuite.EmptyArray, 0, 0);
-				return mac.Hash;
-			}
-		}
+                var seqnum = Context is ClientContext ? Context.WriteSequenceNumber : Context.ReadSequenceNumber;
+                Write(header, 0, seqnum);
+                header[8] = (byte) contentType;
+                Write(header, 9, Context.Protocol);
+                Write(header, 11, (short) fragment.Length);
 
-		#endregion
+                HashAlgorithm mac = ClientHMAC;
+                mac.TransformBlock(header, 0, header.Length, header, 0);
+                mac.TransformBlock(fragment, 0, fragment.Length, fragment, 0);
+                // hack, else the method will allocate a new buffer of the same length (negative half the optimization)
+                mac.TransformFinalBlock(EmptyArray, 0, 0);
+                return mac.Hash;
+            }
+        }
 
-		#region Key Generation Methods
+        #endregion
 
-		public override void ComputeMasterSecret(byte[] preMasterSecret)
-		{
-			// Create master secret
-			this.Context.MasterSecret = new byte[preMasterSecret.Length];
-			this.Context.MasterSecret = this.PRF(
-				preMasterSecret, "master secret", this.Context.RandomCS, 48);
+        #region Key Generation Methods
 
-			DebugHelper.WriteLine(">>>> MasterSecret", this.Context.MasterSecret);
-		}
+        public override void ComputeMasterSecret(byte[] preMasterSecret)
+        {
+            // Create master secret
+            Context.MasterSecret = new byte[preMasterSecret.Length];
+            Context.MasterSecret = PRF(
+                preMasterSecret, "master secret", Context.RandomCS, 48);
 
-		public override void ComputeKeys()
-		{
-			// Create keyblock
-			TlsStream keyBlock = new TlsStream(
-				this.PRF(
-				this.Context.MasterSecret, 
-				"key expansion",
-				this.Context.RandomSC,
-				this.KeyBlockSize));
+            DebugHelper.WriteLine(">>>> MasterSecret", Context.MasterSecret);
+        }
 
-			this.Context.Negotiating.ClientWriteMAC = keyBlock.ReadBytes(this.HashSize);
-			this.Context.Negotiating.ServerWriteMAC = keyBlock.ReadBytes(this.HashSize);
-			this.Context.ClientWriteKey = keyBlock.ReadBytes(this.KeyMaterialSize);
-			this.Context.ServerWriteKey = keyBlock.ReadBytes(this.KeyMaterialSize);
+        public override void ComputeKeys()
+        {
+            // Create keyblock
+            var keyBlock = new TlsStream(
+                PRF(
+                    Context.MasterSecret,
+                    "key expansion",
+                    Context.RandomSC,
+                    KeyBlockSize));
 
-			if (this.IvSize != 0)
-			{
-				this.Context.ClientWriteIV = keyBlock.ReadBytes(this.IvSize);
-				this.Context.ServerWriteIV = keyBlock.ReadBytes(this.IvSize);
-			}
-			else
-			{
-				this.Context.ClientWriteIV = CipherSuite.EmptyArray;
-				this.Context.ServerWriteIV = CipherSuite.EmptyArray;
-			}
+            Context.Negotiating.ClientWriteMAC = keyBlock.ReadBytes(HashSize);
+            Context.Negotiating.ServerWriteMAC = keyBlock.ReadBytes(HashSize);
+            Context.ClientWriteKey = keyBlock.ReadBytes(KeyMaterialSize);
+            Context.ServerWriteKey = keyBlock.ReadBytes(KeyMaterialSize);
 
-			DebugHelper.WriteLine(">>>> KeyBlock", keyBlock.ToArray());
-			DebugHelper.WriteLine(">>>> ClientWriteKey", this.Context.ClientWriteKey);
-			DebugHelper.WriteLine(">>>> ClientWriteIV", this.Context.ClientWriteIV);
-			DebugHelper.WriteLine(">>>> ClientWriteMAC", this.Context.Negotiating.ClientWriteMAC);
-			DebugHelper.WriteLine(">>>> ServerWriteKey", this.Context.ServerWriteKey);
-			DebugHelper.WriteLine(">>>> ServerWriteIV", this.Context.ServerWriteIV);
-			DebugHelper.WriteLine(">>>> ServerWriteMAC", this.Context.Negotiating.ServerWriteMAC);
+            if (IvSize != 0)
+            {
+                Context.ClientWriteIV = keyBlock.ReadBytes(IvSize);
+                Context.ServerWriteIV = keyBlock.ReadBytes(IvSize);
+            }
+            else
+            {
+                Context.ClientWriteIV = EmptyArray;
+                Context.ServerWriteIV = EmptyArray;
+            }
 
-			ClientSessionCache.SetContextInCache (this.Context);
-			// Clear no more needed data
-			keyBlock.Reset();
-		}
+            DebugHelper.WriteLine(">>>> KeyBlock", keyBlock.ToArray());
+            DebugHelper.WriteLine(">>>> ClientWriteKey", Context.ClientWriteKey);
+            DebugHelper.WriteLine(">>>> ClientWriteIV", Context.ClientWriteIV);
+            DebugHelper.WriteLine(">>>> ClientWriteMAC", Context.Negotiating.ClientWriteMAC);
+            DebugHelper.WriteLine(">>>> ServerWriteKey", Context.ServerWriteKey);
+            DebugHelper.WriteLine(">>>> ServerWriteIV", Context.ServerWriteIV);
+            DebugHelper.WriteLine(">>>> ServerWriteMAC", Context.Negotiating.ServerWriteMAC);
 
-		#endregion
-	}
+            ClientSessionCache.SetContextInCache(Context);
+            // Clear no more needed data
+            keyBlock.Reset();
+        }
+
+        #endregion
+    }
 }

@@ -23,71 +23,65 @@
 //
 
 using System;
-using System.Text;
 using System.Runtime.Serialization;
 
 namespace Mono.Security.Protocol.Tls
 {
-	[Serializable]
-	internal sealed class TlsException : Exception
-	{	
-		#region Fields
+    [Serializable]
+    internal sealed class TlsException : Exception
+    {
+        #region Properties
 
-		private Alert alert;
+        public Alert Alert { get; }
 
-		#endregion
+        #endregion
 
-		#region Properties
+        #region Fields
 
-		public Alert Alert
-		{
-			get { return this.alert; }
-		}
+        #endregion
 
-		#endregion
+        #region Constructors
 
-		#region Constructors
-		
-		internal TlsException(string message) : base(message)
-		{
-		}
+        internal TlsException(string message) : base(message)
+        {
+        }
 
-		internal TlsException(SerializationInfo info, StreamingContext context) : base(info, context)
-		{
-		}
-		
-		internal TlsException(string message, Exception ex) : base(message, ex)
-		{
-		}
+        internal TlsException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
 
-		internal TlsException(
-			AlertLevel			level,
-			AlertDescription	description) 
-			: this (level, description, Alert.GetAlertMessage(description))
-		{
-		}
+        internal TlsException(string message, Exception ex) : base(message, ex)
+        {
+        }
 
-		internal TlsException(
-			AlertLevel			level,
-			AlertDescription	description,
-			string				message) : base (message)
-		{
-			this.alert = new Alert(level, description);
-		}
+        internal TlsException(
+            AlertLevel level,
+            AlertDescription description)
+            : this(level, description, Alert.GetAlertMessage(description))
+        {
+        }
 
-		internal TlsException(
-			AlertDescription description) 
-			: this (description, Alert.GetAlertMessage(description))
-		{
-		}
+        internal TlsException(
+            AlertLevel level,
+            AlertDescription description,
+            string message) : base(message)
+        {
+            Alert = new Alert(level, description);
+        }
 
-		internal TlsException(
-			AlertDescription	description,
-			string				message) : base (message)
-		{
-			this.alert = new Alert(description);
-		}
+        internal TlsException(
+            AlertDescription description)
+            : this(description, Alert.GetAlertMessage(description))
+        {
+        }
 
-		#endregion
-	}
+        internal TlsException(
+            AlertDescription description,
+            string message) : base(message)
+        {
+            Alert = new Alert(description);
+        }
+
+        #endregion
+    }
 }

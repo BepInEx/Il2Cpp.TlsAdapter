@@ -24,85 +24,79 @@
 
 extern alias MonoSecurity;
 using System;
-using System.Text;
-using Mono.Security;
-using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsServerCertificateRequest : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerCertificateRequest : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerCertificateRequest(Context context) 
-			: base(context, HandshakeType.CertificateRequest)
-		{
-		}
+        public TlsServerCertificateRequest(Context context)
+            : base(context, HandshakeType.CertificateRequest)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			ServerContext context = (ServerContext)this.Context;
-			
-			int count = context.ServerSettings.CertificateTypes.Length;
+        protected override void ProcessAsTls1()
+        {
+            var context = (ServerContext) Context;
 
-			this.WriteByte(Convert.ToByte(count));
+            var count = context.ServerSettings.CertificateTypes.Length;
 
-			// Write requested certificate types
-			for (int i = 0; i < count; i++)
-			{
-				this.WriteByte((byte)context.ServerSettings.CertificateTypes[i]);
-			}
+            WriteByte(Convert.ToByte(count));
 
-			/*
-			 * Write requested certificate authorities (Distinguised Names)
-			 * 
-			 * Name ::= SEQUENCE OF RelativeDistinguishedName
-			 * 
-			 * RelativeDistinguishedName ::= SET OF AttributeValueAssertion
-			 * 
-			 * AttributeValueAssertion ::= SEQUENCE {
-			 * attributeType OBJECT IDENTIFIER
-			 * attributeValue ANY }
-			 */
+            // Write requested certificate types
+            for (var i = 0; i < count; i++) WriteByte((byte) context.ServerSettings.CertificateTypes[i]);
 
-			/*
-			*  From RFC 5246:
-			*	If the certificate_authorities list is empty, then the client MAY
-			*	send any certificate of the appropriate ClientCertificateType,
-			*	unless there is some external arrangement to the contrary.
-			*
-			*  Better let the client choose which certificate instead of sending down
-			*  a potentially large list of DNs.
+            /*
+             * Write requested certificate authorities (Distinguised Names)
+             * 
+             * Name ::= SEQUENCE OF RelativeDistinguishedName
+             * 
+             * RelativeDistinguishedName ::= SET OF AttributeValueAssertion
+             * 
+             * AttributeValueAssertion ::= SEQUENCE {
+             * attributeType OBJECT IDENTIFIER
+             * attributeValue ANY }
+             */
 
-			if (context.ServerSettings.DistinguisedNames.Length > 0)
-			{
-				TlsStream list = new TlsStream ();
-				// this is the worst formating ever :-|
-				foreach (string dn in context.ServerSettings.DistinguisedNames)
-				{
-					byte[] name = X501.FromString (dn).GetBytes ();
-					list.Write ((short)name.Length);
-					list.Write (name);
-				}
-				this.Write ((short)list.Length);
-				this.Write (list.ToArray ());
-			}
-			else
-			{
-			*/
-				this.Write ((short)0);
-			//}
-		}
+            /*
+            *  From RFC 5246:
+            *	If the certificate_authorities list is empty, then the client MAY
+            *	send any certificate of the appropriate ClientCertificateType,
+            *	unless there is some external arrangement to the contrary.
+            *
+            *  Better let the client choose which certificate instead of sending down
+            *  a potentially large list of DNs.
 
-		#endregion
-	}
+            if (context.ServerSettings.DistinguisedNames.Length > 0)
+            {
+                TlsStream list = new TlsStream ();
+                // this is the worst formating ever :-|
+                foreach (string dn in context.ServerSettings.DistinguisedNames)
+                {
+                    byte[] name = X501.FromString (dn).GetBytes ();
+                    list.Write ((short)name.Length);
+                    list.Write (name);
+                }
+                this.Write ((short)list.Length);
+                this.Write (list.ToArray ());
+            }
+            else
+            {
+            */
+            Write((short) 0);
+            //}
+        }
+
+        #endregion
+    }
 }

@@ -27,159 +27,144 @@ using System.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class SslHandshakeHash : System.Security.Cryptography.HashAlgorithm
-	{
-		#region Fields
+    internal class SslHandshakeHash : HashAlgorithm
+    {
+        #region Constructors
 
-		private HashAlgorithm	md5;
-		private HashAlgorithm	sha;
-		private bool			hashing;
-		private byte[]			secret;
-		private byte[]			innerPadMD5;
-		private byte[]			outerPadMD5;
-		private byte[]			innerPadSHA;
-		private byte[]			outerPadSHA;
+        public SslHandshakeHash(byte[] secret)
+        {
+            // Create md5 and sha1 hashes
+            md5 = MD5.Create();
+            sha = SHA1.Create();
 
-		#endregion
+            // Set HashSizeValue
+            HashSizeValue = md5.HashSize + sha.HashSize;
 
-		#region Constructors
+            // Update secret
+            this.secret = secret;
 
-		public SslHandshakeHash(byte[] secret)
-		{
-			// Create md5 and sha1 hashes
-			this.md5 = MD5.Create ();
-			this.sha = SHA1.Create ();
-			
-			// Set HashSizeValue
-			this.HashSizeValue = md5.HashSize + sha.HashSize;
+            Initialize();
+        }
 
-			// Update secret
-			this.secret = secret;
+        #endregion
 
-			this.Initialize();
-		}
+        #region Private Methods
 
-		#endregion
+        private void initializePad()
+        {
+            // Fill md5 arrays
+            innerPadMD5 = new byte[48];
+            outerPadMD5 = new byte[48];
 
-		#region Methods
+            /* Pad the key for inner and outer digest */
+            for (var i = 0; i < 48; ++i)
+            {
+                innerPadMD5[i] = 0x36;
+                outerPadMD5[i] = 0x5C;
+            }
 
-		public override void Initialize()
-		{
-			this.md5.Initialize();
-			this.sha.Initialize();
-			this.initializePad();
-			this.hashing = false;
-		}
+            // Fill sha arrays
+            innerPadSHA = new byte[40];
+            outerPadSHA = new byte[40];
 
-		public override byte[] HashFinal()
-		{
-			if (!this.hashing)
-			{
-				this.hashing = true;
-			}
+            /* Pad the key for inner and outer digest */
+            for (var i = 0; i < 40; ++i)
+            {
+                innerPadSHA[i] = 0x36;
+                outerPadSHA[i] = 0x5C;
+            }
+        }
 
-			// Finalize the md5 hash
-			this.md5.TransformBlock(this.secret, 0, this.secret.Length, this.secret, 0);
-			this.md5.TransformFinalBlock(this.innerPadMD5, 0, this.innerPadMD5.Length);
+        #endregion
 
-			byte[] firstResultMD5 = this.md5.Hash;
+        #region Fields
 
-			this.md5.Initialize();
-			this.md5.TransformBlock(this.secret, 0, this.secret.Length, this.secret, 0);
-			this.md5.TransformBlock(this.outerPadMD5, 0, this.outerPadMD5.Length, this.outerPadMD5, 0);
-			this.md5.TransformFinalBlock(firstResultMD5, 0, firstResultMD5.Length);
-			
-			// Finalize the sha1 hash
-			this.sha.TransformBlock(this.secret, 0, this.secret.Length, this.secret, 0);
-			this.sha.TransformFinalBlock(this.innerPadSHA, 0, this.innerPadSHA.Length);
+        private readonly HashAlgorithm md5;
+        private readonly HashAlgorithm sha;
+        private bool hashing;
+        private readonly byte[] secret;
+        private byte[] innerPadMD5;
+        private byte[] outerPadMD5;
+        private byte[] innerPadSHA;
+        private byte[] outerPadSHA;
 
-			byte[] firstResultSHA = this.sha.Hash;
-			
-			this.sha.Initialize();
-			this.sha.TransformBlock(this.secret, 0, this.secret.Length, this.secret, 0);
-			this.sha.TransformBlock(this.outerPadSHA, 0, this.outerPadSHA.Length, this.outerPadSHA, 0);
-			this.sha.TransformFinalBlock(firstResultSHA, 0, firstResultSHA.Length);
+        #endregion
 
-			this.Initialize();
+        #region Methods
 
-			byte[] result = new byte[36];
+        public override void Initialize()
+        {
+            md5.Initialize();
+            sha.Initialize();
+            initializePad();
+            hashing = false;
+        }
 
-			Buffer.BlockCopy(this.md5.Hash, 0, result, 0, 16);
-			Buffer.BlockCopy(this.sha.Hash, 0, result, 16, 20);
+        public override byte[] HashFinal()
+        {
+            if (!hashing) hashing = true;
 
-			return result;
-		}
+            // Finalize the md5 hash
+            md5.TransformBlock(secret, 0, secret.Length, secret, 0);
+            md5.TransformFinalBlock(innerPadMD5, 0, innerPadMD5.Length);
 
-		public override void HashCore(byte[] array, int ibStart, int cbSize)
-		{
-			if (!this.hashing)
-			{
-				this.hashing = true;
-			}
+            var firstResultMD5 = md5.Hash;
 
-			this.md5.TransformBlock(array, ibStart, cbSize, array, ibStart);
-			this.sha.TransformBlock(array, ibStart, cbSize, array, ibStart);
-		}
+            md5.Initialize();
+            md5.TransformBlock(secret, 0, secret.Length, secret, 0);
+            md5.TransformBlock(outerPadMD5, 0, outerPadMD5.Length, outerPadMD5, 0);
+            md5.TransformFinalBlock(firstResultMD5, 0, firstResultMD5.Length);
 
-		public byte[] CreateSignature(RSA rsa) 
-		{
-			if (rsa == null)
-			{
-				throw new CryptographicUnexpectedOperationException ("missing key");
-			}
+            // Finalize the sha1 hash
+            sha.TransformBlock(secret, 0, secret.Length, secret, 0);
+            sha.TransformFinalBlock(innerPadSHA, 0, innerPadSHA.Length);
 
-			RSASslSignatureFormatter f = new RSASslSignatureFormatter(rsa);
-			f.SetHashAlgorithm("MD5SHA1");
+            var firstResultSHA = sha.Hash;
 
-			return f.CreateSignature(this.Hash);
-		}
+            sha.Initialize();
+            sha.TransformBlock(secret, 0, secret.Length, secret, 0);
+            sha.TransformBlock(outerPadSHA, 0, outerPadSHA.Length, outerPadSHA, 0);
+            sha.TransformFinalBlock(firstResultSHA, 0, firstResultSHA.Length);
 
-		public bool VerifySignature(RSA rsa, byte[] rgbSignature) 
-		{
-			if (rsa == null)
-			{
-				throw new CryptographicUnexpectedOperationException ("missing key");
-			}
-			if (rgbSignature == null)
-			{
-				throw new ArgumentNullException ("rgbSignature");
-			}
+            Initialize();
 
-			RSASslSignatureDeformatter d = new RSASslSignatureDeformatter(rsa);
-			d.SetHashAlgorithm("MD5SHA1");
+            var result = new byte[36];
 
-			return d.VerifySignature(this.Hash, rgbSignature);
-		}
+            Buffer.BlockCopy(md5.Hash, 0, result, 0, 16);
+            Buffer.BlockCopy(sha.Hash, 0, result, 16, 20);
 
-		#endregion
+            return result;
+        }
 
-		#region Private Methods
+        public override void HashCore(byte[] array, int ibStart, int cbSize)
+        {
+            if (!hashing) hashing = true;
 
-		private void initializePad()
-		{
-			// Fill md5 arrays
-			this.innerPadMD5 = new byte[48];
-			this.outerPadMD5 = new byte[48];
+            md5.TransformBlock(array, ibStart, cbSize, array, ibStart);
+            sha.TransformBlock(array, ibStart, cbSize, array, ibStart);
+        }
 
-			/* Pad the key for inner and outer digest */
-			for (int i = 0; i < 48; ++i) 
-			{
-				this.innerPadMD5[i] = 0x36;
-				this.outerPadMD5[i] = 0x5C;
-			}
+        public byte[] CreateSignature(RSA rsa)
+        {
+            if (rsa == null) throw new CryptographicUnexpectedOperationException("missing key");
 
-			// Fill sha arrays
-			this.innerPadSHA = new byte[40];
-			this.outerPadSHA = new byte[40];
+            var f = new RSASslSignatureFormatter(rsa);
+            f.SetHashAlgorithm("MD5SHA1");
 
-			/* Pad the key for inner and outer digest */
-			for (int i = 0; i < 40; ++i) 
-			{
-				this.innerPadSHA[i] = 0x36;
-				this.outerPadSHA[i] = 0x5C;
-			}
-		}
+            return f.CreateSignature(Hash);
+        }
 
-		#endregion
-	}
+        public bool VerifySignature(RSA rsa, byte[] rgbSignature)
+        {
+            if (rsa == null) throw new CryptographicUnexpectedOperationException("missing key");
+            if (rgbSignature == null) throw new ArgumentNullException("rgbSignature");
+
+            var d = new RSASslSignatureDeformatter(rsa);
+            d.SetHashAlgorithm("MD5SHA1");
+
+            return d.VerifySignature(Hash, rgbSignature);
+        }
+
+        #endregion
+    }
 }

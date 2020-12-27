@@ -24,82 +24,72 @@
 
 using System;
 using System.Security.Cryptography;
+using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class RSASslSignatureFormatter : AsymmetricSignatureFormatter
-	{
-		#region Fields
+    internal class RSASslSignatureFormatter : AsymmetricSignatureFormatter
+    {
+        #region Fields
 
-		private RSA				key;
-		private HashAlgorithm	hash;
+        private RSA key;
+        private HashAlgorithm hash;
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Constructors
 
-		public RSASslSignatureFormatter()
-		{
-		}
+        public RSASslSignatureFormatter()
+        {
+        }
 
-		public RSASslSignatureFormatter(AsymmetricAlgorithm key)
-		{
-			this.SetKey(key);
-		}
+        public RSASslSignatureFormatter(AsymmetricAlgorithm key)
+        {
+            SetKey(key);
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override byte[] CreateSignature(byte[] rgbHash)
-		{
-			if (this.key == null)
-			{
-				throw new CryptographicUnexpectedOperationException("The key is a null reference");
-			}
-			if (hash == null)
-			{
-				throw new CryptographicUnexpectedOperationException("The hash algorithm is a null reference.");
-			}
-			if (rgbHash == null)
-			{
-				throw new ArgumentNullException("The rgbHash parameter is a null reference.");
-			}
+        public override byte[] CreateSignature(byte[] rgbHash)
+        {
+            if (key == null) throw new CryptographicUnexpectedOperationException("The key is a null reference");
+            if (hash == null)
+                throw new CryptographicUnexpectedOperationException("The hash algorithm is a null reference.");
+            if (rgbHash == null) throw new ArgumentNullException("The rgbHash parameter is a null reference.");
 
-			return Mono.Security.Cryptography.PKCS1.Sign_v15(
-				this.key,
-				this.hash,
-				rgbHash);
-		}
+            return PKCS1.Sign_v15(
+                key,
+                hash,
+                rgbHash);
+        }
 
-		public override void SetHashAlgorithm(string strName)
-		{
+        public override void SetHashAlgorithm(string strName)
+        {
 #if INSIDE_SYSTEM
 			hash = new Mono.Security.Cryptography.MD5SHA1 ();
 #else
-			switch (strName)
-			{
-				case "MD5SHA1":
-					this.hash = new MD5SHA1();
-					break;
+            switch (strName)
+            {
+                case "MD5SHA1":
+                    hash = new MD5SHA1();
+                    break;
 
-				default:
-					this.hash = HashAlgorithm.Create(strName);
-					break;
-			}
+                default:
+                    hash = HashAlgorithm.Create(strName);
+                    break;
+            }
 #endif
-		}
+        }
 
-		public override void SetKey(AsymmetricAlgorithm key)
-		{
-			if (!(key is RSA))
-			{
-				throw new ArgumentException("Specfied key is not an RSA key");
-			}
+        public override void SetKey(AsymmetricAlgorithm key)
+        {
+            if (!(key is RSA)) throw new ArgumentException("Specfied key is not an RSA key");
 
-			this.key = key as RSA;
-		}
+            this.key = key as RSA;
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

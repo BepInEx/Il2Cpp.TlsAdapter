@@ -21,40 +21,21 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
+namespace Mono.Security.Protocol.Tls
+{
+    // note: other things should be moved here
+    internal class SecurityParameters
+    {
+        public CipherSuite Cipher { get; set; }
 
-namespace Mono.Security.Protocol.Tls {
+        public byte[] ClientWriteMAC { get; set; }
 
-	// note: other things should be moved here
-	internal class SecurityParameters {
+        public byte[] ServerWriteMAC { get; set; }
 
-		private CipherSuite cipher;
-		private byte[] clientWriteMAC;
-		private byte[] serverWriteMAC;
-
-		public SecurityParameters ()
-		{
-		}
-
-		public CipherSuite Cipher {
-			get { return cipher; }
-			set { cipher = value; }
-		}
-
-		public byte[] ClientWriteMAC {
-			get { return clientWriteMAC; }
-			set { clientWriteMAC = value; }
-		}
-
-		public byte[] ServerWriteMAC {
-			get { return serverWriteMAC; }
-			set { serverWriteMAC = value; }
-		}
-
-		public void Clear ()
-		{
-			// FIXME: clear cipher
-			cipher = null;
-		}
-	}
+        public void Clear()
+        {
+            // FIXME: clear cipher
+            Cipher = null;
+        }
+    }
 }

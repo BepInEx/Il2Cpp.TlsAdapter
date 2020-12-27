@@ -22,67 +22,59 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Security.Cryptography;
-
-using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsClientFinished : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsClientFinished : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsClientFinished(Context context, byte[] buffer)
-			: base(context, HandshakeType.Finished,  buffer)
-		{
-		}
+        public TlsClientFinished(Context context, byte[] buffer)
+            : base(context, HandshakeType.Finished, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			// Compute handshake messages hashes
-			HashAlgorithm hash = new SslHandshakeHash(this.Context.MasterSecret);
+        protected override void ProcessAsSsl3()
+        {
+            // Compute handshake messages hashes
+            HashAlgorithm hash = new SslHandshakeHash(Context.MasterSecret);
 
-			TlsStream data = new TlsStream();
-			data.Write(this.Context.HandshakeMessages.ToArray());
-			data.Write((int)0x434C4E54);
-			
-			hash.TransformFinalBlock(data.ToArray(), 0, (int)data.Length);
+            var data = new TlsStream();
+            data.Write(Context.HandshakeMessages.ToArray());
+            data.Write(0x434C4E54);
 
-			data.Reset();
+            hash.TransformFinalBlock(data.ToArray(), 0, (int) data.Length);
 
-			byte[] clientHash	= this.ReadBytes((int)Length);			
-			byte[] serverHash	= hash.Hash;
-			
-			// Check client prf against server prf
-			if (!Compare (clientHash, serverHash))
-			{
-				throw new TlsException(AlertDescription.DecryptError, "Decrypt error.");
-			}
-		}
+            data.Reset();
 
-		protected override void ProcessAsTls1()
-		{
-			byte[]			clientPRF		= this.ReadBytes((int)this.Length);
-			HashAlgorithm	hash			= new MD5SHA1();
+            var clientHash = ReadBytes((int) Length);
+            var serverHash = hash.Hash;
 
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			byte[] digest = hash.ComputeHash (data, 0, data.Length);
+            // Check client prf against server prf
+            if (!Compare(clientHash, serverHash))
+                throw new TlsException(AlertDescription.DecryptError, "Decrypt error.");
+        }
 
-			byte[] serverPRF = this.Context.Current.Cipher.PRF(
-				this.Context.MasterSecret, "client finished", digest, 12);
+        protected override void ProcessAsTls1()
+        {
+            var clientPRF = ReadBytes((int) Length);
+            HashAlgorithm hash = new MD5SHA1();
 
-			// Check client prf against server prf
-			if (!Compare (clientPRF, serverPRF))
-			{
-				throw new TlsException(AlertDescription.DecryptError, "Decrypt error.");
-			}
-		}
+            var data = Context.HandshakeMessages.ToArray();
+            var digest = hash.ComputeHash(data, 0, data.Length);
 
-		#endregion
-	}
+            var serverPRF = Context.Current.Cipher.PRF(
+                Context.MasterSecret, "client finished", digest, 12);
+
+            // Check client prf against server prf
+            if (!Compare(clientPRF, serverPRF)) throw new TlsException(AlertDescription.DecryptError, "Decrypt error.");
+        }
+
+        #endregion
+    }
 }

@@ -23,497 +23,380 @@
 //
 
 using System;
-using System.Text;
-using System.Collections;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
-using Mono.Security.Cryptography;
 using Mono.Security.Protocol.Tls.Handshake;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal abstract class Context
-	{
-		#region Internal Constants
+    internal abstract class Context
+    {
+        #region Constructors
 
-		internal const short MAX_FRAGMENT_SIZE	= 16384; // 2^14
-		internal const short TLS1_PROTOCOL_CODE = (0x03 << 8) | 0x01;
-		internal const short SSL3_PROTOCOL_CODE = (0x03 << 8) | 0x00;
-		internal const long  UNIX_BASE_TICKS	= 621355968000000000;
+        public Context(SecurityProtocolType securityProtocolType)
+        {
+            SecurityProtocol = securityProtocolType;
+            CompressionMethod = SecurityCompressionType.None;
+            ServerSettings = new TlsServerSettings();
+            ClientSettings = new TlsClientSettings();
+            HandshakeMessages = new TlsStream();
+            SessionId = null;
+            HandshakeState = HandshakeState.None;
+            random = RandomNumberGenerator.Create();
+        }
 
-		#endregion
+        #endregion
 
-		#region Fields
-		
-		// Protocol version
-		private SecurityProtocolType securityProtocol;
-		
-		// Sesison ID
-		private byte[] sessionId;
+        #region Internal Constants
 
-		// Compression method
-		private SecurityCompressionType compressionMethod;
+        internal const short MAX_FRAGMENT_SIZE = 16384; // 2^14
+        internal const short TLS1_PROTOCOL_CODE = (0x03 << 8) | 0x01;
+        internal const short SSL3_PROTOCOL_CODE = (0x03 << 8) | 0x00;
+        internal const long UNIX_BASE_TICKS = 621355968000000000;
 
-		// Information sent and request by the server in the Handshake protocol
-		private TlsServerSettings serverSettings;
+        #endregion
 
-		// Client configuration
-		private TlsClientSettings clientSettings;
+        #region Fields
 
-		// Cipher suite information
-		private SecurityParameters current;
-		private SecurityParameters negotiating;
-		private SecurityParameters read;
-		private SecurityParameters write;
-		private CipherSuiteCollection supportedCiphers;
+        // Protocol version
 
-		// Last handshake message received
-		private HandshakeType lastHandshakeMsg;
+        // Sesison ID
 
-		// Handshake negotiation state
-		private	HandshakeState handshakeState;
+        // Compression method
 
-		// Misc
-		private bool	abbreviatedHandshake;
-		private bool	receivedConnectionEnd;
-		private bool	sentConnectionEnd;
-		private bool	protocolNegotiated;
-		
-		// Sequence numbers
-		private ulong	writeSequenceNumber;
-		private ulong	readSequenceNumber;
+        // Information sent and request by the server in the Handshake protocol
 
-		// Random data
-		private byte[]	clientRandom;
-		private byte[]	serverRandom;
-		private byte[]	randomCS;
-		private byte[]	randomSC;
+        // Client configuration
 
-		// Key information
-		private byte[]	masterSecret;
-		private byte[]	clientWriteKey;
-		private byte[]	serverWriteKey;
-		private byte[]	clientWriteIV;
-		private byte[]	serverWriteIV;
-		
-		// Handshake hashes
-		private TlsStream handshakeMessages;
-		
-		// Secure Random generator		
-		private RandomNumberGenerator random;
+        // Cipher suite information
+        private SecurityParameters current;
+        private SecurityParameters negotiating;
 
-		// Record protocol
-		private RecordProtocol recordProtocol;
+        // Last handshake message received
 
-		#endregion
+        // Handshake negotiation state
 
-		#region Properties
+        // Misc
 
-		public bool AbbreviatedHandshake
-		{
-			get { return abbreviatedHandshake; }
-			set { abbreviatedHandshake = value; }
-		}
+        // Sequence numbers
 
-		public bool	ProtocolNegotiated
-		{
-			get { return this.protocolNegotiated; }
-			set { this.protocolNegotiated = value; }
-		}
+        // Random data
 
-		public bool ChangeCipherSpecDone { get; set; }
+        // Key information
 
-		public SecurityProtocolType SecurityProtocol
-		{
-			get 
-			{
-				if ((this.securityProtocol & SecurityProtocolType.Tls) == SecurityProtocolType.Tls ||	
-					(this.securityProtocol & SecurityProtocolType.Default) == SecurityProtocolType.Default)
-				{
-					return SecurityProtocolType.Tls;
-				}
-				else
-				{
-					if ((this.securityProtocol & SecurityProtocolType.Ssl3) == SecurityProtocolType.Ssl3)
-					{
-						return SecurityProtocolType.Ssl3;
-					}
-				}
+        // Handshake hashes
 
-				throw new NotSupportedException("Unsupported security protocol type");
-			}
+        // Secure Random generator		
+        private readonly RandomNumberGenerator random;
 
-			set { this.securityProtocol = value; }
-		}
+        // Record protocol
 
-		public SecurityProtocolType SecurityProtocolFlags
-		{
-			get { return this.securityProtocol; }
-		}
+        #endregion
 
-		public short Protocol
-		{
-			get 
-			{ 
-				switch (this.SecurityProtocol)
-				{
-					case SecurityProtocolType.Tls:
-					case SecurityProtocolType.Default:
-						return Context.TLS1_PROTOCOL_CODE;
+        #region Properties
 
-					case SecurityProtocolType.Ssl3:
-						return Context.SSL3_PROTOCOL_CODE;
+        public bool AbbreviatedHandshake { get; set; }
 
-					case SecurityProtocolType.Ssl2:
-					default:
-						throw new NotSupportedException("Unsupported security protocol type");
-				}
-			}
-		}
+        public bool ProtocolNegotiated { get; set; }
 
-		public byte[] SessionId
-		{
-			get { return this.sessionId; }
-			set { this.sessionId = value; }
-		}
+        public bool ChangeCipherSpecDone { get; set; }
 
-		public SecurityCompressionType CompressionMethod
-		{
-			get { return this.compressionMethod; }
-			set { this.compressionMethod = value; }
-		}
+        public SecurityProtocolType SecurityProtocol
+        {
+            get
+            {
+                if ((SecurityProtocolFlags & SecurityProtocolType.Tls) == SecurityProtocolType.Tls ||
+                    (SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
+                    return SecurityProtocolType.Tls;
 
-		public TlsServerSettings ServerSettings
-		{
-			get { return this.serverSettings; }
-		}
+                if ((SecurityProtocolFlags & SecurityProtocolType.Ssl3) == SecurityProtocolType.Ssl3)
+                    return SecurityProtocolType.Ssl3;
 
-		public TlsClientSettings ClientSettings
-		{
-			get { return this.clientSettings; }
-		}
+                throw new NotSupportedException("Unsupported security protocol type");
+            }
 
-		public HandshakeType LastHandshakeMsg
-		{
-			get { return this.lastHandshakeMsg; }
-			set { this.lastHandshakeMsg = value; }
-		}
+            set => SecurityProtocolFlags = value;
+        }
 
-		public	HandshakeState HandshakeState
-		{
-			get { return this.handshakeState; }
-			set { this.handshakeState = value; }
-		}
+        public SecurityProtocolType SecurityProtocolFlags { get; private set; }
 
-		public bool ReceivedConnectionEnd
-		{
-			get { return this.receivedConnectionEnd; }
-			set { this.receivedConnectionEnd = value; }
-		}
+        public short Protocol
+        {
+            get
+            {
+                switch (SecurityProtocol)
+                {
+                    case SecurityProtocolType.Tls:
+                    case SecurityProtocolType.Default:
+                        return TLS1_PROTOCOL_CODE;
 
-		public bool SentConnectionEnd
-		{
-			get { return this.sentConnectionEnd; }
-			set { this.sentConnectionEnd = value; }
-		}
+                    case SecurityProtocolType.Ssl3:
+                        return SSL3_PROTOCOL_CODE;
 
-		public CipherSuiteCollection SupportedCiphers
-		{
-			get { return supportedCiphers; }
-			set { supportedCiphers = value; }
-		}
+                    case SecurityProtocolType.Ssl2:
+                    default:
+                        throw new NotSupportedException("Unsupported security protocol type");
+                }
+            }
+        }
 
-		public TlsStream HandshakeMessages
-		{
-			get { return this.handshakeMessages; }
-		}
+        public byte[] SessionId { get; set; }
 
-		public ulong WriteSequenceNumber
-		{
-			get { return this.writeSequenceNumber; }
-			set { this.writeSequenceNumber = value; }
-		}
+        public SecurityCompressionType CompressionMethod { get; set; }
 
-		public ulong ReadSequenceNumber
-		{
-			get { return this.readSequenceNumber; }
-			set { this.readSequenceNumber = value; }
-		}
+        public TlsServerSettings ServerSettings { get; private set; }
 
-		public byte[] ClientRandom
-		{
-			get { return this.clientRandom; }
-			set { this.clientRandom = value; }
-		}
+        public TlsClientSettings ClientSettings { get; private set; }
 
-		public byte[] ServerRandom
-		{
-			get { return this.serverRandom; }
-			set { this.serverRandom = value; }
-		}
+        public HandshakeType LastHandshakeMsg { get; set; }
 
-		public byte[] RandomCS
-		{
-			get { return this.randomCS; }
-			set { this.randomCS = value; }
-		}
+        public HandshakeState HandshakeState { get; set; }
 
-		public byte[] RandomSC
-		{
-			get { return this.randomSC; }
-			set { this.randomSC = value; }
-		}
+        public bool ReceivedConnectionEnd { get; set; }
 
-		public byte[] MasterSecret
-		{
-			get { return this.masterSecret; }
-			set { this.masterSecret = value; }
-		}
+        public bool SentConnectionEnd { get; set; }
 
-		public byte[] ClientWriteKey
-		{
-			get { return this.clientWriteKey; }
-			set { this.clientWriteKey = value; }
-		}
+        public CipherSuiteCollection SupportedCiphers { get; set; }
 
-		public byte[] ServerWriteKey
-		{
-			get { return this.serverWriteKey; }
-			set { this.serverWriteKey = value; }
-		}
+        public TlsStream HandshakeMessages { get; private set; }
 
-		public byte[] ClientWriteIV
-		{
-			get { return this.clientWriteIV; }
-			set { this.clientWriteIV = value; }
-		}
+        public ulong WriteSequenceNumber { get; set; }
 
-		public byte[] ServerWriteIV
-		{
-			get { return this.serverWriteIV; }
-			set { this.serverWriteIV = value; }
-		}
+        public ulong ReadSequenceNumber { get; set; }
 
-		public RecordProtocol RecordProtocol
-		{
-			get { return this.recordProtocol; }
-			set { this.recordProtocol = value; }
-		}
+        public byte[] ClientRandom { get; set; }
 
-		#endregion
+        public byte[] ServerRandom { get; set; }
 
-		#region Constructors
+        public byte[] RandomCS { get; set; }
 
-		public Context(SecurityProtocolType securityProtocolType)
-		{
-			this.SecurityProtocol	= securityProtocolType;
-			this.compressionMethod	= SecurityCompressionType.None;
-			this.serverSettings		= new TlsServerSettings();
-			this.clientSettings		= new TlsClientSettings();
-			this.handshakeMessages	= new TlsStream();
-			this.sessionId			= null;
-			this.handshakeState		= HandshakeState.None;
-			this.random				= RandomNumberGenerator.Create();
-		}
+        public byte[] RandomSC { get; set; }
 
-		#endregion
+        public byte[] MasterSecret { get; set; }
 
-		#region Methods
-		
-		public int GetUnixTime()
-		{
-			DateTime now = DateTime.UtcNow;
-																		     
-			return (int)((now.Ticks - UNIX_BASE_TICKS) / TimeSpan.TicksPerSecond);
-		}
+        public byte[] ClientWriteKey { get; set; }
 
-		public byte[] GetSecureRandomBytes(int count)
-		{
-			byte[] secureBytes = new byte[count];
+        public byte[] ServerWriteKey { get; set; }
 
-			this.random.GetNonZeroBytes(secureBytes);
-			
-			return secureBytes;
-		}
+        public byte[] ClientWriteIV { get; set; }
 
-		public virtual void Clear()
-		{
-			this.compressionMethod	= SecurityCompressionType.None;
-			this.serverSettings		= new TlsServerSettings();
-			this.clientSettings		= new TlsClientSettings();
-			this.handshakeMessages	= new TlsStream();
-			this.sessionId			= null;
-			this.handshakeState		= HandshakeState.None;
+        public byte[] ServerWriteIV { get; set; }
 
-			this.ClearKeyInfo();
-		}
+        public RecordProtocol RecordProtocol { get; set; }
 
-		public virtual void ClearKeyInfo()
-		{
-			// Clear Master Secret
-			if (masterSecret != null) {
-				Array.Clear (masterSecret, 0, masterSecret.Length);
-				masterSecret = null;
-			}
+        #endregion
 
-			// Clear client and server random
-			if (clientRandom != null) {
-				Array.Clear (clientRandom, 0, clientRandom.Length);
-				clientRandom = null;
-			}
-			if (serverRandom != null) {
-				Array.Clear (serverRandom, 0, serverRandom.Length);
-				serverRandom = null;
-			}
-			if (randomCS != null) {
-				Array.Clear (randomCS, 0, randomCS.Length);
-				randomCS = null;
-			}
-			if (randomSC != null) {
-				Array.Clear (randomSC, 0, randomSC.Length);
-				randomSC = null;
-			}
+        #region Methods
 
-			// Clear client keys
-			if (clientWriteKey != null) {
-				Array.Clear (clientWriteKey, 0, clientWriteKey.Length);
-				clientWriteKey = null;
-			}
-			if (clientWriteIV != null) {
-				Array.Clear (clientWriteIV, 0, clientWriteIV.Length);
-				clientWriteIV = null;
-			}
-			
-			// Clear server keys
-			if (serverWriteKey != null) {
-				Array.Clear (serverWriteKey, 0, serverWriteKey.Length);
-				serverWriteKey = null;
-			}
-			if (serverWriteIV != null) {
-				Array.Clear (serverWriteIV, 0, serverWriteIV.Length);
-				serverWriteIV = null;
-			}
+        public int GetUnixTime()
+        {
+            var now = DateTime.UtcNow;
 
-			// Reset handshake messages
-			this.handshakeMessages.Reset();
+            return (int) ((now.Ticks - UNIX_BASE_TICKS) / TimeSpan.TicksPerSecond);
+        }
 
-			// Clear MAC keys if protocol is different than Ssl3
-			// SSLv3 needs them inside Mono.Security.Protocol.Tls.SslCipherSuite.Compute[Client|Server]RecordMAC
-			if (this.securityProtocol != SecurityProtocolType.Ssl3)
-			{
+        public byte[] GetSecureRandomBytes(int count)
+        {
+            var secureBytes = new byte[count];
+
+            random.GetNonZeroBytes(secureBytes);
+
+            return secureBytes;
+        }
+
+        public virtual void Clear()
+        {
+            CompressionMethod = SecurityCompressionType.None;
+            ServerSettings = new TlsServerSettings();
+            ClientSettings = new TlsClientSettings();
+            HandshakeMessages = new TlsStream();
+            SessionId = null;
+            HandshakeState = HandshakeState.None;
+
+            ClearKeyInfo();
+        }
+
+        public virtual void ClearKeyInfo()
+        {
+            // Clear Master Secret
+            if (MasterSecret != null)
+            {
+                Array.Clear(MasterSecret, 0, MasterSecret.Length);
+                MasterSecret = null;
+            }
+
+            // Clear client and server random
+            if (ClientRandom != null)
+            {
+                Array.Clear(ClientRandom, 0, ClientRandom.Length);
+                ClientRandom = null;
+            }
+
+            if (ServerRandom != null)
+            {
+                Array.Clear(ServerRandom, 0, ServerRandom.Length);
+                ServerRandom = null;
+            }
+
+            if (RandomCS != null)
+            {
+                Array.Clear(RandomCS, 0, RandomCS.Length);
+                RandomCS = null;
+            }
+
+            if (RandomSC != null)
+            {
+                Array.Clear(RandomSC, 0, RandomSC.Length);
+                RandomSC = null;
+            }
+
+            // Clear client keys
+            if (ClientWriteKey != null)
+            {
+                Array.Clear(ClientWriteKey, 0, ClientWriteKey.Length);
+                ClientWriteKey = null;
+            }
+
+            if (ClientWriteIV != null)
+            {
+                Array.Clear(ClientWriteIV, 0, ClientWriteIV.Length);
+                ClientWriteIV = null;
+            }
+
+            // Clear server keys
+            if (ServerWriteKey != null)
+            {
+                Array.Clear(ServerWriteKey, 0, ServerWriteKey.Length);
+                ServerWriteKey = null;
+            }
+
+            if (ServerWriteIV != null)
+            {
+                Array.Clear(ServerWriteIV, 0, ServerWriteIV.Length);
+                ServerWriteIV = null;
+            }
+
+            // Reset handshake messages
+            HandshakeMessages.Reset();
+
+            // Clear MAC keys if protocol is different than Ssl3
+            // SSLv3 needs them inside Mono.Security.Protocol.Tls.SslCipherSuite.Compute[Client|Server]RecordMAC
+            if (SecurityProtocolFlags != SecurityProtocolType.Ssl3)
+            {
 //				this.clientWriteMAC = null;
 //				this.serverWriteMAC = null;
-			}
-		}
+            }
+        }
 
-		public SecurityProtocolType DecodeProtocolCode (short code, bool allowFallback = false)
-		{
-			switch (code)
-			{
-				case Context.TLS1_PROTOCOL_CODE:
-					return SecurityProtocolType.Tls;
+        public SecurityProtocolType DecodeProtocolCode(short code, bool allowFallback = false)
+        {
+            switch (code)
+            {
+                case TLS1_PROTOCOL_CODE:
+                    return SecurityProtocolType.Tls;
 
-				case Context.SSL3_PROTOCOL_CODE:
-					return SecurityProtocolType.Ssl3;
+                case SSL3_PROTOCOL_CODE:
+                    return SecurityProtocolType.Ssl3;
 
-				default:
-					// if allowed we'll continue using TLS (1.0) even if the other side is capable of using a newer
-					// version of the TLS protocol
-					if (allowFallback && (code > (short) Context.TLS1_PROTOCOL_CODE))
-						return SecurityProtocolType.Tls;
-					throw new NotSupportedException("Unsupported security protocol type");
-			}
-		}
+                default:
+                    // if allowed we'll continue using TLS (1.0) even if the other side is capable of using a newer
+                    // version of the TLS protocol
+                    if (allowFallback && code > TLS1_PROTOCOL_CODE)
+                        return SecurityProtocolType.Tls;
+                    throw new NotSupportedException("Unsupported security protocol type");
+            }
+        }
 
-		public void ChangeProtocol(short protocol)
-		{
-			SecurityProtocolType protocolType = this.DecodeProtocolCode(protocol);
+        public void ChangeProtocol(short protocol)
+        {
+            var protocolType = DecodeProtocolCode(protocol);
 
-			if ((protocolType & this.SecurityProtocolFlags) == protocolType ||
-				(this.SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
-			{
-				this.SecurityProtocol = protocolType;
-				this.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers ((this is ServerContext), protocolType);
-			}
-			else
-			{
-				throw new TlsException(AlertDescription.ProtocolVersion, "Incorrect protocol version received from server");
-			}
-		}
+            if ((protocolType & SecurityProtocolFlags) == protocolType ||
+                (SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
+            {
+                SecurityProtocol = protocolType;
+                SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers(this is ServerContext, protocolType);
+            }
+            else
+            {
+                throw new TlsException(AlertDescription.ProtocolVersion,
+                    "Incorrect protocol version received from server");
+            }
+        }
 
 
-		public SecurityParameters Current
-		{
-			get
-			{
-				if (current == null)
-					current = new SecurityParameters ();
-				if (current.Cipher != null)
-					current.Cipher.Context = this;
-				return current;
-			}
-		}
+        public SecurityParameters Current
+        {
+            get
+            {
+                if (current == null)
+                    current = new SecurityParameters();
+                if (current.Cipher != null)
+                    current.Cipher.Context = this;
+                return current;
+            }
+        }
 
-		public SecurityParameters Negotiating
-		{
-			get
-			{
-				if (negotiating == null)
-					negotiating = new SecurityParameters ();
-				if (negotiating.Cipher != null)
-					negotiating.Cipher.Context = this;
-				return negotiating;
-			}
-		}
+        public SecurityParameters Negotiating
+        {
+            get
+            {
+                if (negotiating == null)
+                    negotiating = new SecurityParameters();
+                if (negotiating.Cipher != null)
+                    negotiating.Cipher.Context = this;
+                return negotiating;
+            }
+        }
 
-		public SecurityParameters Read
-		{
-			get { return read; }
-		}
+        public SecurityParameters Read { get; private set; }
 
-		public SecurityParameters Write
-		{
-			get { return write; }
-		}
+        public SecurityParameters Write { get; private set; }
 
-		public void StartSwitchingSecurityParameters (bool client)
-		{
-			if (client) {
-				// everything we write from now on is encrypted
-				write = negotiating;
-				// but we still read with the older cipher until we 
-				// receive the ChangeCipherSpec message
-				read = current;
-			} else {
-				// everything we read from now on is encrypted
-				read = negotiating;
-				// but we still write with the older cipher until we 
-				// receive the ChangeCipherSpec message
-				write = current;
-			}
-			current = negotiating;
-		}
+        public void StartSwitchingSecurityParameters(bool client)
+        {
+            if (client)
+            {
+                // everything we write from now on is encrypted
+                Write = negotiating;
+                // but we still read with the older cipher until we 
+                // receive the ChangeCipherSpec message
+                Read = current;
+            }
+            else
+            {
+                // everything we read from now on is encrypted
+                Read = negotiating;
+                // but we still write with the older cipher until we 
+                // receive the ChangeCipherSpec message
+                Write = current;
+            }
 
-		public void EndSwitchingSecurityParameters (bool client)
-		{
-			SecurityParameters temp;
-			if (client) {
-				temp = read;
-				// we now read with the new, negotiated, security parameters
-				read = current;
-			} else {
-				temp = write;
-				// we now write with the new, negotiated, security parameters
-				write = current;
-			}
-			// so we clear the old one (last reference)
-			if (temp != null)
-				temp.Clear ();
-			negotiating = temp;
-			// and are now ready for a future renegotiation
-		}
+            current = negotiating;
+        }
 
-		#endregion
-	}
+        public void EndSwitchingSecurityParameters(bool client)
+        {
+            SecurityParameters temp;
+            if (client)
+            {
+                temp = Read;
+                // we now read with the new, negotiated, security parameters
+                Read = current;
+            }
+            else
+            {
+                temp = Write;
+                // we now write with the new, negotiated, security parameters
+                Write = current;
+            }
+
+            // so we clear the old one (last reference)
+            if (temp != null)
+                temp.Clear();
+            negotiating = temp;
+            // and are now ready for a future renegotiation
+        }
+
+        #endregion
+    }
 }

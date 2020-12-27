@@ -27,69 +27,66 @@ using System.Diagnostics;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class DebugHelper
-	{
-		private static bool isInitialized;
+    internal class DebugHelper
+    {
+        private static bool isInitialized;
 
-		[Conditional("DEBUG")]
-		public static void Initialize()
-		{
-			if (!isInitialized)
-			{
+        [Conditional("DEBUG")]
+        public static void Initialize()
+        {
+            if (!isInitialized)
+            {
 #if !MOBILE
-				Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
-				// Debug.Listeners.Add(new TextWriterTraceListener(@"c:\ssl.log"));
-				Debug.AutoFlush = true;
-				Debug.Indent();
+                Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+                // Debug.Listeners.Add(new TextWriterTraceListener(@"c:\ssl.log"));
+                Debug.AutoFlush = true;
+                Debug.Indent();
 #endif
 
-				isInitialized = true;
-			}
-		}
+                isInitialized = true;
+            }
+        }
 
-		[Conditional("DEBUG")]
-		public static void WriteLine(string format, params object[] args)
-		{
-			Initialize();
-			Debug.WriteLine(String.Format(format, args));
-		}
+        [Conditional("DEBUG")]
+        public static void WriteLine(string format, params object[] args)
+        {
+            Initialize();
+            Debug.WriteLine(format, args);
+        }
 
-		[Conditional("DEBUG")]
-		public static void WriteLine(string message)
-		{
-			Initialize();
-			Debug.WriteLine(message);
-		}
+        [Conditional("DEBUG")]
+        public static void WriteLine(string message)
+        {
+            Initialize();
+            Debug.WriteLine(message);
+        }
 
-		[Conditional("DEBUG")]
-		public static void WriteLine(string message, byte[] buffer)
-		{
-			Initialize();
-			DebugHelper.WriteLine(String.Format("{0} ({1} bytes))", message, buffer.Length));
-			DebugHelper.WriteBuffer(buffer);
-		}
+        [Conditional("DEBUG")]
+        public static void WriteLine(string message, byte[] buffer)
+        {
+            Initialize();
+            WriteLine(string.Format("{0} ({1} bytes))", message, buffer.Length));
+            WriteBuffer(buffer);
+        }
 
-		[Conditional("DEBUG")]
-		public static void WriteBuffer(byte[] buffer)
-		{
-			Initialize();
-			DebugHelper.WriteBuffer(buffer, 0, buffer.Length);
-		}
+        [Conditional("DEBUG")]
+        public static void WriteBuffer(byte[] buffer)
+        {
+            Initialize();
+            WriteBuffer(buffer, 0, buffer.Length);
+        }
 
-		[Conditional("DEBUG")]
-		public static void WriteBuffer(byte[] buffer, int index, int length)
-		{
-			Initialize();
-			for (int i = index; i < length; i += 16)
-			{
-				int count = (length - i) >= 16 ? 16 : (length - i);
-				string buf = "";
-				for (int j = 0; j < count; j++)
-				{
-					buf += buffer[i + j].ToString("x2") + " ";
-				}
-				Debug.WriteLine(buf);
-			}
-		}
-	}
+        [Conditional("DEBUG")]
+        public static void WriteBuffer(byte[] buffer, int index, int length)
+        {
+            Initialize();
+            for (var i = index; i < length; i += 16)
+            {
+                var count = length - i >= 16 ? 16 : length - i;
+                var buf = "";
+                for (var j = 0; j < count; j++) buf += buffer[i + j].ToString("x2") + " ";
+                Debug.WriteLine(buf);
+            }
+        }
+    }
 }

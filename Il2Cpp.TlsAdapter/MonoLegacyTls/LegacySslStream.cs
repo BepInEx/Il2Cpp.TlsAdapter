@@ -8,7 +8,8 @@ namespace Il2Cpp.TlsAdapter.MonoLegacyTls
 {
     public class LegacySslStream : MobileAuthenticatedStream
     {
-        public LegacySslStream(Stream innerStream, bool leaveInnerStreamOpen, SslStream owner, MonoTlsSettings settings, MobileTlsProvider provider) : base(innerStream, leaveInnerStreamOpen, owner, settings, provider)
+        public LegacySslStream(Stream innerStream, bool leaveInnerStreamOpen, SslStream owner, MonoTlsSettings settings,
+            MobileTlsProvider provider) : base(innerStream, leaveInnerStreamOpen, owner, settings, provider)
         {
         }
 

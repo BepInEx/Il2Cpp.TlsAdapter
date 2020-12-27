@@ -22,81 +22,74 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Security.Cryptography;
-
-using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsServerFinished : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerFinished : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerFinished(Context context, byte[] buffer) 
-			: base(context, HandshakeType.Finished, buffer)
-		{
-		}
+        public TlsServerFinished(Context context, byte[] buffer)
+            : base(context, HandshakeType.Finished, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override void Update()
-		{
-			base.Update();
+        public override void Update()
+        {
+            base.Update();
 
-			// Hahdshake is finished
-			this.Context.HandshakeState = HandshakeState.Finished;
-		}
+            // Hahdshake is finished
+            Context.HandshakeState = HandshakeState.Finished;
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		static private byte[] Ssl3Marker = new byte [4] { 0x53, 0x52, 0x56, 0x52 };
+        private static readonly byte[] Ssl3Marker = new byte [4] {0x53, 0x52, 0x56, 0x52};
 
-		protected override void ProcessAsSsl3()
-		{
-			// Compute handshake messages hashes
-			HashAlgorithm hash = new SslHandshakeHash(this.Context.MasterSecret);
+        protected override void ProcessAsSsl3()
+        {
+            // Compute handshake messages hashes
+            HashAlgorithm hash = new SslHandshakeHash(Context.MasterSecret);
 
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			hash.TransformBlock (data, 0, data.Length, data, 0);
-			hash.TransformBlock (Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
-			// hack to avoid memory allocation
-			hash.TransformFinalBlock (CipherSuite.EmptyArray, 0, 0);
+            var data = Context.HandshakeMessages.ToArray();
+            hash.TransformBlock(data, 0, data.Length, data, 0);
+            hash.TransformBlock(Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
+            // hack to avoid memory allocation
+            hash.TransformFinalBlock(CipherSuite.EmptyArray, 0, 0);
 
-			byte[] serverHash	= this.ReadBytes((int)Length);			
-			byte[] clientHash	= hash.Hash;
-			
-			// Check server prf against client prf
-			if (!Compare (clientHash, serverHash))
-			{
-// TODO: Review that selected alert is correct
-				throw new TlsException(AlertDescription.InsuficientSecurity, "Invalid ServerFinished message received.");
-			}
-		}
+            var serverHash = ReadBytes((int) Length);
+            var clientHash = hash.Hash;
 
-		protected override void ProcessAsTls1()
-		{
-			byte[]			serverPRF	= this.ReadBytes((int)Length);
-			HashAlgorithm	hash		= new MD5SHA1();
+            // Check server prf against client prf
+            if (!Compare(clientHash, serverHash))
+                // TODO: Review that selected alert is correct
+                throw new TlsException(AlertDescription.InsuficientSecurity,
+                    "Invalid ServerFinished message received.");
+        }
 
-			// note: we could call HashAlgorithm.ComputeHash(Stream) but that would allocate (on Mono)
-			// a 4096 bytes buffer to process the hash - which is bigger than HandshakeMessages
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			byte[] digest = hash.ComputeHash (data, 0, data.Length);
+        protected override void ProcessAsTls1()
+        {
+            var serverPRF = ReadBytes((int) Length);
+            HashAlgorithm hash = new MD5SHA1();
 
-			byte[] clientPRF = this.Context.Current.Cipher.PRF(this.Context.MasterSecret, "server finished", digest, 12);
+            // note: we could call HashAlgorithm.ComputeHash(Stream) but that would allocate (on Mono)
+            // a 4096 bytes buffer to process the hash - which is bigger than HandshakeMessages
+            var data = Context.HandshakeMessages.ToArray();
+            var digest = hash.ComputeHash(data, 0, data.Length);
 
-			// Check server prf against client prf
-			if (!Compare (clientPRF, serverPRF))
-			{
-				throw new TlsException("Invalid ServerFinished message received.");
-			}
-		}
+            var clientPRF = Context.Current.Cipher.PRF(Context.MasterSecret, "server finished", digest, 12);
 
-		#endregion
-	}
+            // Check server prf against client prf
+            if (!Compare(clientPRF, serverPRF)) throw new TlsException("Invalid ServerFinished message received.");
+        }
+
+        #endregion
+    }
 }

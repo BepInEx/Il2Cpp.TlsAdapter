@@ -24,13 +24,9 @@
 
 extern alias MonoSecurity;
 using System;
-using System.Collections;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-
 using Mono.Security.Protocol.Tls.Handshake;
 using MonoSecurity::Mono.Security.Interface;
 
@@ -39,295 +35,278 @@ namespace Mono.Security.Protocol.Tls
 #if INSIDE_SYSTEM
 	internal
 #else
-	public
+    public
 #endif
-	class SslServerStream : SslStreamBase
-	{
-		#region Internal Events
-		
-		internal event CertificateValidationCallback	ClientCertValidation;
-		internal event PrivateKeySelectionCallback		PrivateKeySelection;
-		
-		#endregion
+        class SslServerStream : SslStreamBase
+    {
+        #region Properties
 
-		#region Properties
+        public X509Certificate ClientCertificate
+        {
+            get
+            {
+                if (context.HandshakeState == HandshakeState.Finished) return context.ClientSettings.ClientCertificate;
 
-		public X509Certificate ClientCertificate
-		{
-			get
-			{
-				if (this.context.HandshakeState == HandshakeState.Finished)
-				{
-					return this.context.ClientSettings.ClientCertificate;
-				}
+                return null;
+            }
+        }
 
-				return null;
-			}
-		}
+        #endregion
 
-		#endregion
+        public event CertificateValidationCallback2 ClientCertValidation2;
 
-		#region Callback Properties
+        #region Finalizer
 
-		public CertificateValidationCallback ClientCertValidationDelegate 
-		{
-			get { return this.ClientCertValidation; }
-			set { this.ClientCertValidation = value; }
-		}
+        ~SslServerStream()
+        {
+            Dispose(false);
+        }
 
-		public PrivateKeySelectionCallback PrivateKeyCertSelectionDelegate
-		{
-			get { return this.PrivateKeySelection; }
-			set { this.PrivateKeySelection = value; }
-		}
+        #endregion
 
-		#endregion
+        #region IDisposable Methods
 
-		public event CertificateValidationCallback2 ClientCertValidation2;
-		#region Constructors
+        public override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
 
-		public SslServerStream(
-			Stream			stream, 
-			X509Certificate serverCertificate) : this(
-			stream, 
-			serverCertificate, 
-			false, 
-			false, 
-			SecurityProtocolType.Default)
-		{
-		}
+            if (disposing)
+            {
+                ClientCertValidation = null;
+                PrivateKeySelection = null;
+            }
+        }
 
-		public SslServerStream(
-			Stream			stream,
-			X509Certificate serverCertificate,
-			bool			clientCertificateRequired,
-			bool			ownsStream): this(
-			stream, 
-			serverCertificate, 
-			clientCertificateRequired, 
-			ownsStream, 
-			SecurityProtocolType.Default)
-		{
-		}
+        #endregion
 
-		public SslServerStream(
-			Stream			stream,
-			X509Certificate serverCertificate,
-			bool			clientCertificateRequired,
-			bool			requestClientCertificate,
-			bool			ownsStream)
-				: this (stream, serverCertificate, clientCertificateRequired, requestClientCertificate, ownsStream, SecurityProtocolType.Default)
-		{
-		}
+        #region Internal Events
 
-		public SslServerStream(
-			Stream					stream,
-			X509Certificate			serverCertificate,
-			bool					clientCertificateRequired,
-			bool					ownsStream,
-			SecurityProtocolType	securityProtocolType)
-			: this (stream, serverCertificate, clientCertificateRequired, false, ownsStream, securityProtocolType)
-		{
-		}
+        internal event CertificateValidationCallback ClientCertValidation;
+        internal event PrivateKeySelectionCallback PrivateKeySelection;
 
-		public SslServerStream(
-			Stream					stream,
-			X509Certificate			serverCertificate,
-			bool					clientCertificateRequired,
-			bool					requestClientCertificate,
-			bool					ownsStream,
-			SecurityProtocolType	securityProtocolType)
-			: base(stream, ownsStream)
-		{
-			this.context = new ServerContext(
-				this,
-				securityProtocolType,
-				serverCertificate,
-				clientCertificateRequired,
-				requestClientCertificate);
+        #endregion
 
-			this.protocol = new ServerRecordProtocol(innerStream, (ServerContext)this.context);
-		}
+        #region Callback Properties
 
-		#endregion
+        public CertificateValidationCallback ClientCertValidationDelegate
+        {
+            get => ClientCertValidation;
+            set => ClientCertValidation = value;
+        }
 
-		#region Finalizer
+        public PrivateKeySelectionCallback PrivateKeyCertSelectionDelegate
+        {
+            get => PrivateKeySelection;
+            set => PrivateKeySelection = value;
+        }
 
-		~SslServerStream()
-		{
-			this.Dispose(false);
-		}
+        #endregion
 
-		#endregion
+        #region Constructors
 
-		#region IDisposable Methods
+        public SslServerStream(
+            Stream stream,
+            X509Certificate serverCertificate) : this(
+            stream,
+            serverCertificate,
+            false,
+            false,
+            SecurityProtocolType.Default)
+        {
+        }
 
-		public override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
+        public SslServerStream(
+            Stream stream,
+            X509Certificate serverCertificate,
+            bool clientCertificateRequired,
+            bool ownsStream) : this(
+            stream,
+            serverCertificate,
+            clientCertificateRequired,
+            ownsStream,
+            SecurityProtocolType.Default)
+        {
+        }
 
-			if (disposing)
-			{
-				this.ClientCertValidation = null;
-				this.PrivateKeySelection = null;
-			}
-		}
+        public SslServerStream(
+            Stream stream,
+            X509Certificate serverCertificate,
+            bool clientCertificateRequired,
+            bool requestClientCertificate,
+            bool ownsStream)
+            : this(stream, serverCertificate, clientCertificateRequired, requestClientCertificate, ownsStream,
+                SecurityProtocolType.Default)
+        {
+        }
 
-		#endregion
+        public SslServerStream(
+            Stream stream,
+            X509Certificate serverCertificate,
+            bool clientCertificateRequired,
+            bool ownsStream,
+            SecurityProtocolType securityProtocolType)
+            : this(stream, serverCertificate, clientCertificateRequired, false, ownsStream, securityProtocolType)
+        {
+        }
 
-		#region Handsake Methods
+        public SslServerStream(
+            Stream stream,
+            X509Certificate serverCertificate,
+            bool clientCertificateRequired,
+            bool requestClientCertificate,
+            bool ownsStream,
+            SecurityProtocolType securityProtocolType)
+            : base(stream, ownsStream)
+        {
+            context = new ServerContext(
+                this,
+                securityProtocolType,
+                serverCertificate,
+                clientCertificateRequired,
+                requestClientCertificate);
 
-		/*
-			Client											Server
+            protocol = new ServerRecordProtocol(innerStream, (ServerContext) context);
+        }
 
-			ClientHello                 -------->
-															ServerHello
-															Certificate*
-															ServerKeyExchange*
-															CertificateRequest*
-										<--------			ServerHelloDone
-			Certificate*
-			ClientKeyExchange
-			CertificateVerify*
-			[ChangeCipherSpec]
-			Finished                    -------->
-															[ChangeCipherSpec]
-										<--------           Finished
-			Application Data            <------->			Application Data
+        #endregion
 
-					Fig. 1 - Message flow for a full handshake		
-		*/
+        #region Handsake Methods
 
-		internal override IAsyncResult BeginNegotiateHandshake(AsyncCallback callback, object state)
-		{
-			// Reset the context if needed
-			if (this.context.HandshakeState != HandshakeState.None)
-			{
-				this.context.Clear();
-			}
+        /*
+            Client											Server
 
-			// Obtain supported cipher suites
-			this.context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers (true, context.SecurityProtocol);
+            ClientHello                 -------->
+                                                            ServerHello
+                                                            Certificate*
+                                                            ServerKeyExchange*
+                                                            CertificateRequest*
+                                        <--------			ServerHelloDone
+            Certificate*
+            ClientKeyExchange
+            CertificateVerify*
+            [ChangeCipherSpec]
+            Finished                    -------->
+                                                            [ChangeCipherSpec]
+                                        <--------           Finished
+            Application Data            <------->			Application Data
 
-			// Set handshake state
-			this.context.HandshakeState = HandshakeState.Started;
+                    Fig. 1 - Message flow for a full handshake		
+        */
 
-			// Receive Client Hello message
-			return this.protocol.BeginReceiveRecord(this.innerStream, callback, state);
+        internal override IAsyncResult BeginNegotiateHandshake(AsyncCallback callback, object state)
+        {
+            // Reset the context if needed
+            if (context.HandshakeState != HandshakeState.None) context.Clear();
 
-		}
+            // Obtain supported cipher suites
+            context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers(true, context.SecurityProtocol);
 
-		internal override void EndNegotiateHandshake(IAsyncResult asyncResult)
-		{
-			// Receive Client Hello message and ignore it
-			this.protocol.EndReceiveRecord(asyncResult);
+            // Set handshake state
+            context.HandshakeState = HandshakeState.Started;
 
-			// If received message is not an ClientHello send a
-			// Fatal Alert
-			if (this.context.LastHandshakeMsg != HandshakeType.ClientHello)
-			{
-				this.protocol.SendAlert(AlertDescription.UnexpectedMessage);
-			}
+            // Receive Client Hello message
+            return protocol.BeginReceiveRecord(innerStream, callback, state);
+        }
 
-			// Send ServerHello message
-			this.protocol.SendRecord(HandshakeType.ServerHello);
+        internal override void EndNegotiateHandshake(IAsyncResult asyncResult)
+        {
+            // Receive Client Hello message and ignore it
+            protocol.EndReceiveRecord(asyncResult);
 
-			// Send ServerCertificate message
-			this.protocol.SendRecord(HandshakeType.Certificate);
+            // If received message is not an ClientHello send a
+            // Fatal Alert
+            if (context.LastHandshakeMsg != HandshakeType.ClientHello)
+                protocol.SendAlert(AlertDescription.UnexpectedMessage);
 
-			// If the client certificate is required send the CertificateRequest message
-			if (((ServerContext)this.context).ClientCertificateRequired ||
-				((ServerContext)this.context).RequestClientCertificate)
-			{
-				this.protocol.SendRecord(HandshakeType.CertificateRequest);
-			}
+            // Send ServerHello message
+            protocol.SendRecord(HandshakeType.ServerHello);
 
-			// Send ServerHelloDone message
-			this.protocol.SendRecord(HandshakeType.ServerHelloDone);
+            // Send ServerCertificate message
+            protocol.SendRecord(HandshakeType.Certificate);
 
-			// Receive client response, until the Client Finished message
-			// is received. IE can be interrupted at this stage and never
-			// complete the handshake
-			while (this.context.LastHandshakeMsg != HandshakeType.Finished)
-			{
-				byte[] record = this.protocol.ReceiveRecord(this.innerStream);
-				if ((record == null) || (record.Length == 0))
-				{
-					throw new TlsException(
-						AlertDescription.HandshakeFailiure,
-						"The client stopped the handshake.");
-				}
-			}
+            // If the client certificate is required send the CertificateRequest message
+            if (((ServerContext) context).ClientCertificateRequired ||
+                ((ServerContext) context).RequestClientCertificate)
+                protocol.SendRecord(HandshakeType.CertificateRequest);
 
-			// Send ChangeCipherSpec and ServerFinished messages
-			this.protocol.SendChangeCipherSpec();
-			this.protocol.SendRecord (HandshakeType.Finished);
+            // Send ServerHelloDone message
+            protocol.SendRecord(HandshakeType.ServerHelloDone);
 
-			// The handshake is finished
-			this.context.HandshakeState = HandshakeState.Finished;
+            // Receive client response, until the Client Finished message
+            // is received. IE can be interrupted at this stage and never
+            // complete the handshake
+            while (context.LastHandshakeMsg != HandshakeType.Finished)
+            {
+                var record = protocol.ReceiveRecord(innerStream);
+                if (record == null || record.Length == 0)
+                    throw new TlsException(
+                        AlertDescription.HandshakeFailiure,
+                        "The client stopped the handshake.");
+            }
 
-			// Reset Handshake messages information
-			this.context.HandshakeMessages.Reset ();
+            // Send ChangeCipherSpec and ServerFinished messages
+            protocol.SendChangeCipherSpec();
+            protocol.SendRecord(HandshakeType.Finished);
 
-			// Clear Key Info
-			this.context.ClearKeyInfo();
-		}
+            // The handshake is finished
+            context.HandshakeState = HandshakeState.Finished;
 
-		#endregion
+            // Reset Handshake messages information
+            context.HandshakeMessages.Reset();
 
-		#region Event Methods
+            // Clear Key Info
+            context.ClearKeyInfo();
+        }
 
-		internal override X509Certificate OnLocalCertificateSelection(X509CertificateCollection clientCertificates, X509Certificate serverCertificate, string targetHost, X509CertificateCollection serverRequestedCertificates)
-		{
-			throw new NotSupportedException();
-		}
+        #endregion
 
-		internal override bool OnRemoteCertificateValidation(X509Certificate certificate, int[] errors)
-		{
-			if (this.ClientCertValidation != null)
-			{
-				return this.ClientCertValidation(certificate, errors);
-			}
+        #region Event Methods
 
-			return (errors != null && errors.Length == 0);
-		}
+        internal override X509Certificate OnLocalCertificateSelection(X509CertificateCollection clientCertificates,
+            X509Certificate serverCertificate, string targetHost, X509CertificateCollection serverRequestedCertificates)
+        {
+            throw new NotSupportedException();
+        }
 
-		internal override bool HaveRemoteValidation2Callback {
-			get { return ClientCertValidation2 != null; }
-		}
+        internal override bool OnRemoteCertificateValidation(X509Certificate certificate, int[] errors)
+        {
+            if (ClientCertValidation != null) return ClientCertValidation(certificate, errors);
 
-		internal override ValidationResult OnRemoteCertificateValidation2 (MonoSecurity::Mono.Security.X509.X509CertificateCollection collection)
-		{
-			CertificateValidationCallback2 cb = ClientCertValidation2;
-			if (cb != null)
-				return cb (collection);
-			return null;
-		}
+            return errors != null && errors.Length == 0;
+        }
 
-		internal bool RaiseClientCertificateValidation(
-			X509Certificate certificate, 
-			int[]			certificateErrors)
-		{
-			return base.RaiseRemoteCertificateValidation(certificate, certificateErrors);
-		}
+        internal override bool HaveRemoteValidation2Callback => ClientCertValidation2 != null;
 
-		internal override AsymmetricAlgorithm OnLocalPrivateKeySelection(X509Certificate certificate, string targetHost)
-		{
-			if (this.PrivateKeySelection != null)
-			{
-				return this.PrivateKeySelection(certificate, targetHost);
-			}
+        internal override ValidationResult OnRemoteCertificateValidation2(
+            MonoSecurity::Mono.Security.X509.X509CertificateCollection collection)
+        {
+            var cb = ClientCertValidation2;
+            if (cb != null)
+                return cb(collection);
+            return null;
+        }
 
-			return null;
-		}
+        internal bool RaiseClientCertificateValidation(
+            X509Certificate certificate,
+            int[] certificateErrors)
+        {
+            return RaiseRemoteCertificateValidation(certificate, certificateErrors);
+        }
 
-		internal AsymmetricAlgorithm RaisePrivateKeySelection(
-			X509Certificate certificate,
-			string targetHost)
-		{
-			return base.RaiseLocalPrivateKeySelection(certificate, targetHost);
-		}
+        internal override AsymmetricAlgorithm OnLocalPrivateKeySelection(X509Certificate certificate, string targetHost)
+        {
+            if (PrivateKeySelection != null) return PrivateKeySelection(certificate, targetHost);
 
-		#endregion
-	}
+            return null;
+        }
+
+        internal AsymmetricAlgorithm RaisePrivateKeySelection(
+            X509Certificate certificate,
+            string targetHost)
+        {
+            return RaiseLocalPrivateKeySelection(certificate, targetHost);
+        }
+
+        #endregion
+    }
 }

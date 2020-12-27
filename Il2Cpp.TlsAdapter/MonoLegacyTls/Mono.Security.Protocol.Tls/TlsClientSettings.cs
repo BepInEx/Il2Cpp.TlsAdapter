@@ -23,103 +23,86 @@
 //
 
 extern alias MonoSecurity;
-using System;
-using System.Text;
 using System.Security.Cryptography.X509Certificates;
 using Mono.Security.Cryptography;
-using X509 = MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal sealed class TlsClientSettings
-	{
-		#region Fields
+    internal sealed class TlsClientSettings
+    {
+        #region Fields
 
-		private string						targetHost;
-		private X509CertificateCollection	certificates;
-		//private SecurityCompressionType		compressionMethod;
-		private X509Certificate				clientCertificate;
-		private RSAManaged					certificateRSA;
-	
-		#endregion
+        //private SecurityCompressionType		compressionMethod;
+        private X509Certificate clientCertificate;
 
-		#region Properties
+        #endregion
 
-		public string TargetHost
-		{
-			get { return this.targetHost; }
-			set { this.targetHost = value; }
-		}
+        #region Constructors
 
-		public X509CertificateCollection Certificates
-		{
-			get { return this.certificates; }
-			set { this.certificates = value; }
-		}
-		
-		public X509Certificate ClientCertificate
-		{
-			get { return this.clientCertificate; }
-			set 
-			{ 
-				this.clientCertificate = value; 
-				this.UpdateCertificateRSA();
-			}
-		}
+        public TlsClientSettings()
+        {
+            // this.compressionMethod	= SecurityCompressionType.None;
+            Certificates = new X509CertificateCollection();
+            TargetHost = string.Empty;
+        }
 
-		public RSAManaged CertificateRSA
-		{
-			get { return this.certificateRSA; }
-		}
+        #endregion
 
-		/*
-		public SecurityCompressionType CompressionMethod
-		{
-			get { return this.compressionMethod; }
-			set 
-			{ 
-				if (value != SecurityCompressionType.None)
-				{
-					throw new NotSupportedException("Specified compression method is not supported");
-				}
-				this.compressionMethod = value; 
-			}
-		}
-		*/
+        #region Methods
 
-		#endregion
+        public void UpdateCertificateRSA()
+        {
+            if (clientCertificate == null)
+            {
+                CertificateRSA = null;
+            }
+            else
+            {
+                var cert = new MonoSecurity::Mono.Security.X509.X509Certificate(clientCertificate.GetRawCertData());
 
-		#region Constructors
+                CertificateRSA = new RSAManaged(
+                    cert.RSA.KeySize);
 
-		public TlsClientSettings()
-		{
-			// this.compressionMethod	= SecurityCompressionType.None;
-			this.certificates		= new X509CertificateCollection();
-			this.targetHost			= String.Empty;
-		}
+                CertificateRSA.ImportParameters(
+                    cert.RSA.ExportParameters(false));
+            }
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Properties
 
-		public void UpdateCertificateRSA()
-		{
-			if (this.clientCertificate == null)
-			{
-				this.certificateRSA = null;
-			}
-			else
-			{
-				X509.X509Certificate cert = new X509.X509Certificate(this.clientCertificate.GetRawCertData());
+        public string TargetHost { get; set; }
 
-				this.certificateRSA = new RSAManaged(
-					cert.RSA.KeySize);
+        public X509CertificateCollection Certificates { get; set; }
 
-				this.certificateRSA.ImportParameters(
-					cert.RSA.ExportParameters(false));
-			}
-		}
+        public X509Certificate ClientCertificate
+        {
+            get => clientCertificate;
+            set
+            {
+                clientCertificate = value;
+                UpdateCertificateRSA();
+            }
+        }
 
-		#endregion
-	}
+        public RSAManaged CertificateRSA { get; private set; }
+
+        /*
+        public SecurityCompressionType CompressionMethod
+        {
+            get { return this.compressionMethod; }
+            set 
+            { 
+                if (value != SecurityCompressionType.None)
+                {
+                    throw new NotSupportedException("Specified compression method is not supported");
+                }
+                this.compressionMethod = value; 
+            }
+        }
+        */
+
+        #endregion
+    }
 }

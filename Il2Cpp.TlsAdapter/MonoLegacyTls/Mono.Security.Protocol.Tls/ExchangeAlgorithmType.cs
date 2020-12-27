@@ -29,15 +29,15 @@ namespace Mono.Security.Protocol.Tls
 #if INSIDE_SYSTEM
 	internal
 #else
-	[Serializable]
-	public
+    [Serializable]
+    public
 #endif
-	enum ExchangeAlgorithmType
-	{
-		DiffieHellman,
-		Fortezza,
-		None,
-		RsaKeyX,
-		RsaSign
-	}
+        enum ExchangeAlgorithmType
+    {
+        DiffieHellman,
+        Fortezza,
+        None,
+        RsaKeyX,
+        RsaSign
+    }
 }

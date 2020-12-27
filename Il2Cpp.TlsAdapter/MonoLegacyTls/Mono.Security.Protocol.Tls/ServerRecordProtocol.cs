@@ -25,149 +25,155 @@
 using System;
 using System.Globalization;
 using System.IO;
-
 using Mono.Security.Protocol.Tls.Handshake;
 using Mono.Security.Protocol.Tls.Handshake.Server;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class ServerRecordProtocol : RecordProtocol
-	{
-		TlsClientCertificate cert;
-		
-		#region Constructors
+    internal class ServerRecordProtocol : RecordProtocol
+    {
+        private TlsClientCertificate cert;
 
-		public ServerRecordProtocol(
-			Stream			innerStream, 
-			ServerContext	context) : base(innerStream, context)
-		{
-		}
+        #region Constructors
 
-		#endregion
+        public ServerRecordProtocol(
+            Stream innerStream,
+            ServerContext context) : base(innerStream, context)
+        {
+        }
 
-		#region Send Messages
+        #endregion
 
-		public override HandshakeMessage GetMessage(HandshakeType type)
-		{
-			// Create and process the record message
-			HandshakeMessage msg = this.createServerHandshakeMessage(type);
+        #region Send Messages
 
-			return msg;
-		}
+        public override HandshakeMessage GetMessage(HandshakeType type)
+        {
+            // Create and process the record message
+            var msg = createServerHandshakeMessage(type);
 
-		#endregion
+            return msg;
+        }
 
-		#region Handshake Processing Methods
+        #endregion
 
-		protected override void ProcessHandshakeMessage(TlsStream handMsg)
-		{
-			HandshakeType		handshakeType	= (HandshakeType)handMsg.ReadByte();
-			HandshakeMessage	message			= null;
+        #region Handshake Processing Methods
 
-			// Read message length
-			int length = handMsg.ReadInt24();
+        protected override void ProcessHandshakeMessage(TlsStream handMsg)
+        {
+            var handshakeType = (HandshakeType) handMsg.ReadByte();
+            HandshakeMessage message = null;
 
-			// Read message data
-			byte[] data = new byte[length];
-			handMsg.Read(data, 0, length);
+            // Read message length
+            var length = handMsg.ReadInt24();
 
-			// Create and process the server message
-			message = this.createClientHandshakeMessage(handshakeType, data);
-			message.Process();
+            // Read message data
+            var data = new byte[length];
+            handMsg.Read(data, 0, length);
 
-			// Update the last handshake message
-			this.Context.LastHandshakeMsg = handshakeType;
+            // Create and process the server message
+            message = createClientHandshakeMessage(handshakeType, data);
+            message.Process();
 
-			// Update session
-			if (message != null)
-			{
-				message.Update();
-				this.Context.HandshakeMessages.WriteByte ((byte) handshakeType);
-				this.Context.HandshakeMessages.WriteInt24 (length);
-				this.Context.HandshakeMessages.Write (data, 0, data.Length);
-			}
-		}
+            // Update the last handshake message
+            Context.LastHandshakeMsg = handshakeType;
 
-		#endregion
+            // Update session
+            if (message != null)
+            {
+                message.Update();
+                Context.HandshakeMessages.WriteByte((byte) handshakeType);
+                Context.HandshakeMessages.WriteInt24(length);
+                Context.HandshakeMessages.Write(data, 0, data.Length);
+            }
+        }
 
-		#region Server Handshake Message Factories
+        #endregion
 
-		private HandshakeMessage createClientHandshakeMessage(
-			HandshakeType type, byte[] buffer)
-		{
-			var last = context.LastHandshakeMsg;
-			switch (type)
-			{
-				case HandshakeType.ClientHello:
-					return new TlsClientHello(this.context, buffer);
+        #region Server Handshake Message Factories
 
-				case HandshakeType.Certificate:
-					if (last != HandshakeType.ClientHello)
-						break;
-					cert = new TlsClientCertificate(this.context, buffer);
-					return cert;
+        private HandshakeMessage createClientHandshakeMessage(
+            HandshakeType type, byte[] buffer)
+        {
+            var last = context.LastHandshakeMsg;
+            switch (type)
+            {
+                case HandshakeType.ClientHello:
+                    return new TlsClientHello(context, buffer);
 
-				case HandshakeType.ClientKeyExchange:
-					if (last == HandshakeType.ClientHello || last == HandshakeType.Certificate)
-						return new TlsClientKeyExchange(this.context, buffer);
-					break;
+                case HandshakeType.Certificate:
+                    if (last != HandshakeType.ClientHello)
+                        break;
+                    cert = new TlsClientCertificate(context, buffer);
+                    return cert;
 
-				case HandshakeType.CertificateVerify:
-					if (last == HandshakeType.ClientKeyExchange && cert != null)
-						return new TlsClientCertificateVerify(this.context, buffer);
-					break;
+                case HandshakeType.ClientKeyExchange:
+                    if (last == HandshakeType.ClientHello || last == HandshakeType.Certificate)
+                        return new TlsClientKeyExchange(context, buffer);
+                    break;
 
-				case HandshakeType.Finished:
-					// Certificates are optional, but if provided, they should send a CertificateVerify
-					bool hasCert = cert != null && cert.HasCertificate;
-					bool check = hasCert ? (last == HandshakeType.CertificateVerify) : (last == HandshakeType.ClientKeyExchange);
-					// ChangeCipherSpecDone is not an handshake message (it's a content type) but still needs to be happens before finished
-					if (check && context.ChangeCipherSpecDone) {
-						context.ChangeCipherSpecDone = false;
-						return new TlsClientFinished(this.context, buffer);
-					}
-					break;
-					
-				default:
-					throw new TlsException(AlertDescription.UnexpectedMessage, String.Format(CultureInfo.CurrentUICulture,
-														 "Unknown server handshake message received ({0})", 
-														 type.ToString()));
-			}
-			throw new TlsException (AlertDescription.HandshakeFailiure, String.Format ("Protocol error, unexpected protocol transition from {0} to {1}", last, type));
-		}
+                case HandshakeType.CertificateVerify:
+                    if (last == HandshakeType.ClientKeyExchange && cert != null)
+                        return new TlsClientCertificateVerify(context, buffer);
+                    break;
 
-		private HandshakeMessage createServerHandshakeMessage(
-			HandshakeType type)
-		{
-			switch (type)
-			{
-				case HandshakeType.HelloRequest:
-					this.SendRecord(HandshakeType.ClientHello);
-					return null;
+                case HandshakeType.Finished:
+                    // Certificates are optional, but if provided, they should send a CertificateVerify
+                    var hasCert = cert != null && cert.HasCertificate;
+                    var check = hasCert
+                        ? last == HandshakeType.CertificateVerify
+                        : last == HandshakeType.ClientKeyExchange;
+                    // ChangeCipherSpecDone is not an handshake message (it's a content type) but still needs to be happens before finished
+                    if (check && context.ChangeCipherSpecDone)
+                    {
+                        context.ChangeCipherSpecDone = false;
+                        return new TlsClientFinished(context, buffer);
+                    }
 
-				case HandshakeType.ServerHello:
-					return new TlsServerHello(this.context);
+                    break;
 
-				case HandshakeType.Certificate:
-					return new TlsServerCertificate(this.context);
+                default:
+                    throw new TlsException(AlertDescription.UnexpectedMessage, string.Format(
+                        CultureInfo.CurrentUICulture,
+                        "Unknown server handshake message received ({0})",
+                        type.ToString()));
+            }
 
-				case HandshakeType.ServerKeyExchange:
-					return new TlsServerKeyExchange(this.context);
+            throw new TlsException(AlertDescription.HandshakeFailiure,
+                string.Format("Protocol error, unexpected protocol transition from {0} to {1}", last, type));
+        }
 
-				case HandshakeType.CertificateRequest:
-					return new TlsServerCertificateRequest(this.context);
+        private HandshakeMessage createServerHandshakeMessage(
+            HandshakeType type)
+        {
+            switch (type)
+            {
+                case HandshakeType.HelloRequest:
+                    SendRecord(HandshakeType.ClientHello);
+                    return null;
 
-				case HandshakeType.ServerHelloDone:
-					return new TlsServerHelloDone(this.context);
+                case HandshakeType.ServerHello:
+                    return new TlsServerHello(context);
 
-				case HandshakeType.Finished:
-					return new TlsServerFinished(this.context);
+                case HandshakeType.Certificate:
+                    return new TlsServerCertificate(context);
 
-				default:
-					throw new InvalidOperationException("Unknown server handshake message type: " + type.ToString() );					
-			}
-		}
+                case HandshakeType.ServerKeyExchange:
+                    return new TlsServerKeyExchange(context);
 
-		#endregion
-	}
+                case HandshakeType.CertificateRequest:
+                    return new TlsServerCertificateRequest(context);
+
+                case HandshakeType.ServerHelloDone:
+                    return new TlsServerHelloDone(context);
+
+                case HandshakeType.Finished:
+                    return new TlsServerFinished(context);
+
+                default:
+                    throw new InvalidOperationException("Unknown server handshake message type: " + type);
+            }
+        }
+
+        #endregion
+    }
 }

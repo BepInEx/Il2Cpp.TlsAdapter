@@ -23,100 +23,94 @@
 //
 
 extern alias MonoSecurity;
-using System;
 using System.Security.Cryptography;
-
-using Mono.Security.Cryptography;
-using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsServerKeyExchange : HandshakeMessage
-	{
-		#region Fields
+    internal class TlsServerKeyExchange : HandshakeMessage
+    {
+        #region Constructors
 
-		private RSAParameters	rsaParams;
-		private byte[]			signedParams;
+        public TlsServerKeyExchange(Context context, byte[] buffer)
+            : base(context, HandshakeType.ServerKeyExchange, buffer)
+        {
+            verifySignature();
+        }
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Methods
 
-		public TlsServerKeyExchange(Context context, byte[] buffer)
-			: base(context, HandshakeType.ServerKeyExchange, buffer)
-		{
-			this.verifySignature();
-		}
+        public override void Update()
+        {
+            base.Update();
 
-		#endregion
+            Context.ServerSettings.ServerKeyExchange = true;
+            Context.ServerSettings.RsaParameters = rsaParams;
+            Context.ServerSettings.SignedParams = signedParams;
+        }
 
-		#region Methods
+        #endregion
 
-		public override void Update()
-		{
-			base.Update();
+        #region Private Methods
 
-			this.Context.ServerSettings.ServerKeyExchange	= true;
-			this.Context.ServerSettings.RsaParameters		= this.rsaParams;
-			this.Context.ServerSettings.SignedParams		= this.signedParams;
-		}
+        private void verifySignature()
+        {
+            var hash = new MD5SHA1();
 
-		#endregion
+            // Calculate size of server params
+            var size = rsaParams.Modulus.Length + rsaParams.Exponent.Length + 4;
 
-		#region Protected Methods
+            // Create server params array
+            var stream = new TlsStream();
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+            stream.Write(Context.RandomCS);
+            stream.Write(ToArray(), 0, size);
 
-		protected override void ProcessAsTls1()
-		{
-			this.rsaParams = new RSAParameters();
-			
-			// Read modulus
-			this.rsaParams.Modulus	= this.ReadBytes(this.ReadInt16());
+            hash.ComputeHash(stream.ToArray());
 
-			// Read exponent
-			this.rsaParams.Exponent	= this.ReadBytes(this.ReadInt16());
+            stream.Reset();
 
-			// Read signed params
-			this.signedParams		= this.ReadBytes(this.ReadInt16());
-		}
+            var isValidSignature = hash.VerifySignature(
+                Context.ServerSettings.CertificateRSA,
+                signedParams);
 
-		#endregion
+            if (!isValidSignature)
+                throw new TlsException(
+                    AlertDescription.DecodeError,
+                    "Data was not signed with the server certificate.");
+        }
 
-		#region Private Methods
+        #endregion
 
-		private void verifySignature()
-		{
-			MD5SHA1 hash = new MD5SHA1();
+        #region Fields
 
-			// Calculate size of server params
-			int size = rsaParams.Modulus.Length + rsaParams.Exponent.Length + 4;
+        private RSAParameters rsaParams;
+        private byte[] signedParams;
 
-			// Create server params array
-			TlsStream stream = new TlsStream();
+        #endregion
 
-			stream.Write(this.Context.RandomCS);
-			stream.Write(this.ToArray(), 0, size);
+        #region Protected Methods
 
-			hash.ComputeHash(stream.ToArray());
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-			stream.Reset();
-			
-			bool isValidSignature = hash.VerifySignature(
-				this.Context.ServerSettings.CertificateRSA,
-				this.signedParams);
+        protected override void ProcessAsTls1()
+        {
+            rsaParams = new RSAParameters();
 
-			if (!isValidSignature)
-			{
-				throw new TlsException(
-					AlertDescription.DecodeError,
-					"Data was not signed with the server certificate.");
-			}
-		}
+            // Read modulus
+            rsaParams.Modulus = ReadBytes(ReadInt16());
 
-		#endregion
-	}
+            // Read exponent
+            rsaParams.Exponent = ReadBytes(ReadInt16());
+
+            // Read signed params
+            signedParams = ReadBytes(ReadInt16());
+        }
+
+        #endregion
+    }
 }

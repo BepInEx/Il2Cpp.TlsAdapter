@@ -22,132 +22,121 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsClientHello : HandshakeMessage
-	{
-		#region Private Fields
+    internal class TlsClientHello : HandshakeMessage
+    {
+        #region Constructors
 
-		private byte[]	random;
-		private byte[]	sessionId;
-		private short[]	cipherSuites;
-		private byte[]	compressionMethods;
+        public TlsClientHello(Context context, byte[] buffer)
+            : base(context, HandshakeType.ClientHello, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Methods
 
-		public TlsClientHello(Context context, byte[] buffer)
-			: base(context, HandshakeType.ClientHello, buffer)
-		{
-		}
+        public override void Update()
+        {
+            base.Update();
 
-		#endregion
+            selectCipherSuite();
+            selectCompressionMethod();
 
-		#region Methods
+            Context.SessionId = sessionId;
+            Context.ClientRandom = random;
+            Context.ProtocolNegotiated = true;
+        }
 
-		public override void Update()
-		{
-			base.Update();
+        #endregion
 
-			this.selectCipherSuite();
-			this.selectCompressionMethod();
+        #region Private Fields
 
-			this.Context.SessionId			= this.sessionId;
-			this.Context.ClientRandom		= this.random;
-			this.Context.ProtocolNegotiated	= true;
-		}
+        private byte[] random;
+        private byte[] sessionId;
+        private short[] cipherSuites;
+        private byte[] compressionMethods;
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			// Client Version
-			this.processProtocol(this.ReadInt16());
-								
-			// Random bytes - Unix time + Radom bytes [28]
-			this.random = this.ReadBytes(32);
-			
-			// Session id
-			// Send the session ID empty
-			this.sessionId = this.ReadBytes(this.ReadByte());
-			
-			// Read Supported Cipher Suites count
-			this.cipherSuites = new short[this.ReadInt16()/2];
+        protected override void ProcessAsTls1()
+        {
+            // Client Version
+            processProtocol(ReadInt16());
 
-			// Read Cipher Suites
-			for (int i = 0; i < this.cipherSuites.Length; i++)
-			{
-				this.cipherSuites[i] = this.ReadInt16();
-			}
+            // Random bytes - Unix time + Radom bytes [28]
+            random = ReadBytes(32);
 
-			// Compression methods length
-			this.compressionMethods = new byte[this.ReadByte()];
-			
-			for (int i = 0; i < this.compressionMethods.Length; i++)
-			{
-				this.compressionMethods[i] = this.ReadByte();
-			}
-		}
+            // Session id
+            // Send the session ID empty
+            sessionId = ReadBytes(ReadByte());
 
-		#endregion
+            // Read Supported Cipher Suites count
+            cipherSuites = new short[ReadInt16() / 2];
 
-		#region Private Methods
+            // Read Cipher Suites
+            for (var i = 0; i < cipherSuites.Length; i++) cipherSuites[i] = ReadInt16();
 
-		private void processProtocol(short protocol)
-		{
-			// a server MUST reply with the hight version supported (`true` for fallback)
-			// so a TLS 1.2 client (like Google Chrome) will be returned that the server uses TLS 1.0
-			// instead of an alert about the protocol
-			SecurityProtocolType clientProtocol = Context.DecodeProtocolCode (protocol, true);
+            // Compression methods length
+            compressionMethods = new byte[ReadByte()];
 
-			if ((clientProtocol & this.Context.SecurityProtocolFlags) == clientProtocol ||
-				(this.Context.SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
-			{
-				this.Context.SecurityProtocol = clientProtocol;
-				this.Context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers (true, clientProtocol);
-			}
-			else
-			{
-				throw new TlsException(AlertDescription.ProtocolVersion, "Incorrect protocol version received from server");
-			}
-		}
+            for (var i = 0; i < compressionMethods.Length; i++) compressionMethods[i] = ReadByte();
+        }
 
-		private void selectCipherSuite()
-		{
-			int index = 0;
+        #endregion
 
-			for (int i = 0; i < this.cipherSuites.Length; i++)
-			{
-				if ((index = this.Context.SupportedCiphers.IndexOf(this.cipherSuites[i])) != -1)	
-				{
-					this.Context.Negotiating.Cipher = ((IList<CipherSuite>)this.Context.SupportedCiphers)[index];
-					break;
-				}
-			}
+        #region Private Methods
 
-			if (this.Context.Negotiating.Cipher == null)
-			{
-				throw new TlsException(AlertDescription.InsuficientSecurity, "Insuficient Security");
-			}
-		}
+        private void processProtocol(short protocol)
+        {
+            // a server MUST reply with the hight version supported (`true` for fallback)
+            // so a TLS 1.2 client (like Google Chrome) will be returned that the server uses TLS 1.0
+            // instead of an alert about the protocol
+            var clientProtocol = Context.DecodeProtocolCode(protocol, true);
 
-		private void selectCompressionMethod()
-		{
-			this.Context.CompressionMethod = SecurityCompressionType.None;
-		}
+            if ((clientProtocol & Context.SecurityProtocolFlags) == clientProtocol ||
+                (Context.SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
+            {
+                Context.SecurityProtocol = clientProtocol;
+                Context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers(true, clientProtocol);
+            }
+            else
+            {
+                throw new TlsException(AlertDescription.ProtocolVersion,
+                    "Incorrect protocol version received from server");
+            }
+        }
 
-		#endregion
-	}
+        private void selectCipherSuite()
+        {
+            var index = 0;
+
+            for (var i = 0; i < cipherSuites.Length; i++)
+                if ((index = Context.SupportedCiphers.IndexOf(cipherSuites[i])) != -1)
+                {
+                    Context.Negotiating.Cipher = ((IList<CipherSuite>) Context.SupportedCiphers)[index];
+                    break;
+                }
+
+            if (Context.Negotiating.Cipher == null)
+                throw new TlsException(AlertDescription.InsuficientSecurity, "Insuficient Security");
+        }
+
+        private void selectCompressionMethod()
+        {
+            Context.CompressionMethod = SecurityCompressionType.None;
+        }
+
+        #endregion
+    }
 }

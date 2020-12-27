@@ -22,90 +22,85 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Text;
-using Mono.Security;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsServerCertificateRequest : HandshakeMessage
-	{
-		#region Fields
+    internal class TlsServerCertificateRequest : HandshakeMessage
+    {
+        #region Constructors
 
-		private ClientCertificateType[]	certificateTypes;
-		private string[]				distinguisedNames;
+        public TlsServerCertificateRequest(Context context, byte[] buffer)
+            : base(context, HandshakeType.CertificateRequest, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Methods
 
-		public TlsServerCertificateRequest(Context context, byte[] buffer) 
-			: base(context, HandshakeType.CertificateRequest, buffer)
-		{
-		}
+        public override void Update()
+        {
+            base.Update();
 
-		#endregion
+            Context.ServerSettings.CertificateTypes = certificateTypes;
+            Context.ServerSettings.DistinguisedNames = distinguisedNames;
+            Context.ServerSettings.CertificateRequest = true;
+        }
 
-		#region Methods
+        #endregion
 
-		public override void Update()
-		{
-			base.Update();
+        #region Fields
 
-			this.Context.ServerSettings.CertificateTypes	= this.certificateTypes;
-			this.Context.ServerSettings.DistinguisedNames	= this.distinguisedNames;
-			this.Context.ServerSettings.CertificateRequest	= true;
-		}
+        private ClientCertificateType[] certificateTypes;
+        private string[] distinguisedNames;
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			// Read requested certificate types
-			int typesCount = this.ReadByte();
-						
-			this.certificateTypes = new ClientCertificateType[typesCount];
+        protected override void ProcessAsTls1()
+        {
+            // Read requested certificate types
+            int typesCount = ReadByte();
 
-			for (int i = 0; i < typesCount; i++)
-			{
-				this.certificateTypes[i] = (ClientCertificateType)this.ReadByte();
-			}
+            certificateTypes = new ClientCertificateType[typesCount];
 
-			/*
-			 * Read requested certificate authorities (Distinguised Names)
-			 * 
-			 * Name ::= SEQUENCE OF RelativeDistinguishedName
-			 * 
-			 * RelativeDistinguishedName ::= SET OF AttributeValueAssertion
-			 * 
-			 * AttributeValueAssertion ::= SEQUENCE {
-			 * attributeType OBJECT IDENTIFIER
-			 * attributeValue ANY }
-			 */
-			if (this.ReadInt16() != 0)
-			{
-				ASN1 rdn = new ASN1(this.ReadBytes(this.ReadInt16()));
+            for (var i = 0; i < typesCount; i++) certificateTypes[i] = (ClientCertificateType) ReadByte();
 
-				distinguisedNames = new string[rdn.Count];
+            /*
+             * Read requested certificate authorities (Distinguised Names)
+             * 
+             * Name ::= SEQUENCE OF RelativeDistinguishedName
+             * 
+             * RelativeDistinguishedName ::= SET OF AttributeValueAssertion
+             * 
+             * AttributeValueAssertion ::= SEQUENCE {
+             * attributeType OBJECT IDENTIFIER
+             * attributeValue ANY }
+             */
+            if (ReadInt16() != 0)
+            {
+                var rdn = new ASN1(ReadBytes(ReadInt16()));
 
-				for (int i = 0; i < rdn.Count; i++)
-				{
-					// element[0] = attributeType
-					// element[1] = attributeValue
-					ASN1 element = new ASN1(rdn[i].Value);
+                distinguisedNames = new string[rdn.Count];
 
-					distinguisedNames[i] = Encoding.UTF8.GetString(element[1].Value);
-				}
-			}
-		}
+                for (var i = 0; i < rdn.Count; i++)
+                {
+                    // element[0] = attributeType
+                    // element[1] = attributeValue
+                    var element = new ASN1(rdn[i].Value);
 
-		#endregion
-	}
+                    distinguisedNames[i] = Encoding.UTF8.GetString(element[1].Value);
+                }
+            }
+        }
+
+        #endregion
+    }
 }

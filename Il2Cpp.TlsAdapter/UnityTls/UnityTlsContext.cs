@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Mono.Net.Security;
+using Mono.Util;
 using MonoSecurity::Mono.Security.Cryptography;
 using MonoSecurity::Mono.Security.Interface;
-using Mono.Util;
 using Int8 = System.Byte;
 using size_t = System.IntPtr;
 
@@ -19,6 +19,12 @@ namespace Mono.Unity
     {
         private const bool ActivateTracing = false;
         private readonly UnityTls.unitytls_tlsctx_certificate_callback certificateCallback;
+
+        // Delegates we passed to native to ensure they are not garbage collected
+        private readonly UnityTls.unitytls_tlsctx_read_callback readCallback;
+        private readonly UnityTls.unitytls_tlsctx_trace_callback traceCallback;
+        private readonly UnityTls.unitytls_tlsctx_x509verify_callback verifyCallback;
+        private readonly UnityTls.unitytls_tlsctx_write_callback writeCallback;
         private bool closedGraceful;
         private MonoTlsConnectionInfo connectioninfo;
 
@@ -30,21 +36,15 @@ namespace Mono.Unity
         // States and certificates
         private X509Certificate localClientCertificate;
         private byte[] readBuffer;
-
-        // Delegates we passed to native to ensure they are not garbage collected
-        private readonly UnityTls.unitytls_tlsctx_read_callback readCallback;
         private X509Certificate2 remoteCertificate;
         private UnityTls.unitytls_x509list* requestedClientCertChain = null;
         private UnityTls.unitytls_key* requestedClientKey = null;
 
         // Native UnityTls objects
         private UnityTls.unitytls_tlsctx* tlsContext = null;
-        private readonly UnityTls.unitytls_tlsctx_trace_callback traceCallback;
-        private readonly UnityTls.unitytls_tlsctx_x509verify_callback verifyCallback;
 
         // Memory-buffer
         private byte[] writeBuffer;
-        private readonly UnityTls.unitytls_tlsctx_write_callback writeCallback;
 
         public UnityTlsContext(
             MobileAuthenticatedStream parent,

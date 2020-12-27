@@ -23,108 +23,62 @@
 //
 
 extern alias MonoSecurity;
-using System;
 using System.Security.Cryptography;
-
 using Mono.Security.Cryptography;
-using MonoSecurity::Mono.Security.X509;
 using Mono.Security.Protocol.Tls.Handshake;
+using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class TlsServerSettings
-	{
-		#region Fields
+    internal class TlsServerSettings
+    {
+        #region Methods
 
-		private X509CertificateCollection	certificates;
-		private RSA							certificateRSA;
-		private RSAParameters				rsaParameters;
-		private byte[]						signedParams;
-		private string[]					distinguisedNames;
-		private bool						serverKeyExchange;
-		private bool						certificateRequest;
-		private	ClientCertificateType[]		certificateTypes;
+        public void UpdateCertificateRSA()
+        {
+            if (Certificates == null ||
+                Certificates.Count == 0)
+            {
+                CertificateRSA = null;
+            }
+            else
+            {
+                CertificateRSA = new RSAManaged(
+                    Certificates[0].RSA.KeySize);
 
-		#endregion
+                CertificateRSA.ImportParameters(
+                    Certificates[0].RSA.ExportParameters(false));
+            }
+        }
 
-		#region Properties
-		
-		public bool	ServerKeyExchange
-		{
-			get { return this.serverKeyExchange; }
-			set { this.serverKeyExchange = value; }
-		}		
+        #endregion
 
-		public X509CertificateCollection Certificates
-		{
-			get { return this.certificates; }
-			set { this.certificates = value; }
-		}
+        #region Constructors
 
-		public RSA CertificateRSA
-		{
-			get { return this.certificateRSA; }
-		}
-		
-		public RSAParameters RsaParameters
-		{
-			get { return this.rsaParameters; }
-			set { this.rsaParameters = value; }
-		}
+        #endregion
 
-		public byte[] SignedParams
-		{
-			get { return this.signedParams; }
-			set { this.signedParams = value; }
-		}
+        #region Fields
 
-		public bool	CertificateRequest
-		{
-			get { return this.certificateRequest; }
-			set { this.certificateRequest = value; }
-		}
-		
-		public ClientCertificateType[] CertificateTypes
-		{
-			get { return this.certificateTypes; }
-			set { this.certificateTypes = value; }
-		}
+        #endregion
 
-		public string[] DistinguisedNames
-		{
-			get { return this.distinguisedNames; }
-			set { this.distinguisedNames = value; }
-		}
-		
-		#endregion
+        #region Properties
 
-		#region Constructors
+        public bool ServerKeyExchange { get; set; }
 
-		public TlsServerSettings()
-		{
-		}
+        public X509CertificateCollection Certificates { get; set; }
 
-		#endregion
+        public RSA CertificateRSA { get; private set; }
 
-		#region Methods
+        public RSAParameters RsaParameters { get; set; }
 
-		public void UpdateCertificateRSA()
-		{
-			if (this.certificates == null ||
-				this.certificates.Count == 0)
-			{
-				this.certificateRSA = null;
-			}
-			else
-			{
-				this.certificateRSA = new RSAManaged(
-					this.certificates[0].RSA.KeySize);
+        public byte[] SignedParams { get; set; }
 
-				this.certificateRSA.ImportParameters(
-					this.certificates[0].RSA.ExportParameters(false));
-			}
-		}
+        public bool CertificateRequest { get; set; }
 
-		#endregion
-	}
+        public ClientCertificateType[] CertificateTypes { get; set; }
+
+        public string[] DistinguisedNames { get; set; }
+
+        #endregion
+    }
 }

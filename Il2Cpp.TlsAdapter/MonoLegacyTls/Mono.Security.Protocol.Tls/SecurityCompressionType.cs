@@ -22,21 +22,19 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace Mono.Security.Protocol.Tls
 {
-	// Information about compression methods allowed by TLS
-	// can be found in:
-	//	draft-ietf-tls-compression-05.txt (http://www.ietf.org/internet-drafts/draft-ietf-tls-compression-05.txt)
+    // Information about compression methods allowed by TLS
+    // can be found in:
+    //	draft-ietf-tls-compression-05.txt (http://www.ietf.org/internet-drafts/draft-ietf-tls-compression-05.txt)
 #if INSIDE_SYSTEM
 	internal
 #else
-	public
+    public
 #endif
-	enum SecurityCompressionType
-	{
-		None = 0,
-		Zlib = 1
-	}
+        enum SecurityCompressionType
+    {
+        None = 0,
+        Zlib = 1
+    }
 }

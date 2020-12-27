@@ -26,105 +26,115 @@
 using System;
 using System.Collections.Generic;
 
-namespace Mono.Security.Protocol.Tls {
+namespace Mono.Security.Protocol.Tls
+{
+    internal sealed class CipherSuiteCollection : List<CipherSuite>
+    {
+        #region Fields
 
-	internal sealed class CipherSuiteCollection : List<CipherSuite> {
+        private readonly SecurityProtocolType protocol;
 
-		#region Fields
+        #endregion
 
-		SecurityProtocolType protocol;
+        #region Constructors
 
-		#endregion
+        public CipherSuiteCollection(SecurityProtocolType protocol)
+        {
+            switch (protocol)
+            {
+                case SecurityProtocolType.Default:
+                case SecurityProtocolType.Tls:
+                case SecurityProtocolType.Ssl3:
+                    this.protocol = protocol;
+                    break;
+                case SecurityProtocolType.Ssl2:
+                default:
+                    throw new NotSupportedException("Unsupported security protocol type.");
+            }
+        }
 
-		#region Indexers
+        #endregion
 
-		public CipherSuite this [string name]  {
-			get {
-				int n = IndexOf (name);
-				return n == -1 ? null : ((IList<CipherSuite>)this) [n];
-			}
-		}
+        #region Indexers
 
-		public CipherSuite this [short code] {
-			get {
-				int n = IndexOf (code);
-				return n == -1 ? null : ((IList<CipherSuite>)this) [n];
-			}
-		}
+        public CipherSuite this[string name]
+        {
+            get
+            {
+                var n = IndexOf(name);
+                return n == -1 ? null : ((IList<CipherSuite>) this)[n];
+            }
+        }
 
-		#endregion
+        public CipherSuite this[short code]
+        {
+            get
+            {
+                var n = IndexOf(code);
+                return n == -1 ? null : ((IList<CipherSuite>) this)[n];
+            }
+        }
 
-		#region Constructors
+        #endregion
 
-		public CipherSuiteCollection (SecurityProtocolType protocol)
-		{
-			switch (protocol) {
-			case SecurityProtocolType.Default:
-			case SecurityProtocolType.Tls:
-			case SecurityProtocolType.Ssl3:
-				this.protocol = protocol;
-				break;
-			case SecurityProtocolType.Ssl2:
-			default:
-				throw new NotSupportedException ("Unsupported security protocol type.");
-			}
-		}
+        #region Methods
 
-		#endregion
+        public int IndexOf(string name)
+        {
+            var index = 0;
+            foreach (var cipherSuite in this)
+            {
+                if (string.CompareOrdinal(name, cipherSuite.Name) == 0)
+                    return index;
+                index++;
+            }
 
-		#region Methods
+            return -1;
+        }
 
-		public int IndexOf (string name)
-		{
-			int index = 0;
-			foreach (CipherSuite cipherSuite in this) {
-				if (String.CompareOrdinal (name, cipherSuite.Name) == 0)
-					return index;
-				index++;
-			}
-			return -1;
-		}
+        public int IndexOf(short code)
+        {
+            var index = 0;
+            foreach (var cipherSuite in this)
+            {
+                if (cipherSuite.Code == code)
+                    return index;
+                index++;
+            }
 
-		public int IndexOf (short code)
-		{
-			int index = 0;
-			foreach (CipherSuite cipherSuite in this) {
-				if (cipherSuite.Code == code)
-					return index;
-				index++;
-			}
-			return -1;
-		}
+            return -1;
+        }
 
-		public void Add (
-			short code, string name, CipherAlgorithmType cipherType, 
-			HashAlgorithmType hashType, ExchangeAlgorithmType exchangeType,
-			bool exportable, bool blockMode, byte keyMaterialSize, 
-			byte expandedKeyMaterialSize, short effectiveKeyBytes, 
-			byte ivSize, byte blockSize)
-		{
-			switch (protocol) {
-			case SecurityProtocolType.Default:
-			case SecurityProtocolType.Tls:
-				Add (new TlsCipherSuite (code, name, cipherType, hashType, exchangeType, exportable, blockMode, 
-					keyMaterialSize, expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize));
-				break;
+        public void Add(
+            short code, string name, CipherAlgorithmType cipherType,
+            HashAlgorithmType hashType, ExchangeAlgorithmType exchangeType,
+            bool exportable, bool blockMode, byte keyMaterialSize,
+            byte expandedKeyMaterialSize, short effectiveKeyBytes,
+            byte ivSize, byte blockSize)
+        {
+            switch (protocol)
+            {
+                case SecurityProtocolType.Default:
+                case SecurityProtocolType.Tls:
+                    Add(new TlsCipherSuite(code, name, cipherType, hashType, exchangeType, exportable, blockMode,
+                        keyMaterialSize, expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize));
+                    break;
 
-			case SecurityProtocolType.Ssl3:
-				Add (new SslCipherSuite (code, name, cipherType, hashType, exchangeType, exportable, blockMode, 
-					keyMaterialSize, expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize));
-				break;
-			}
-		}
+                case SecurityProtocolType.Ssl3:
+                    Add(new SslCipherSuite(code, name, cipherType, hashType, exchangeType, exportable, blockMode,
+                        keyMaterialSize, expandedKeyMaterialSize, effectiveKeyBytes, ivSize, blockSize));
+                    break;
+            }
+        }
 
-		public IList<string> GetNames ()
-		{
-			var list = new List<string> (Count);
-			foreach (CipherSuite cipherSuite in this)
-				list.Add (cipherSuite.Name);
-			return list;
-		}
+        public IList<string> GetNames()
+        {
+            var list = new List<string>(Count);
+            foreach (var cipherSuite in this)
+                list.Add(cipherSuite.Name);
+            return list;
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

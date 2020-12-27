@@ -22,66 +22,63 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Security.Cryptography;
-
-using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsClientFinished : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsClientFinished : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsClientFinished(Context context) 
-			: base(context, HandshakeType.Finished)
-		{
-		}
+        public TlsClientFinished(Context context)
+            : base(context, HandshakeType.Finished)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override void Update()
-		{
-			base.Update();
-			this.Reset();
-		}
+        public override void Update()
+        {
+            base.Update();
+            Reset();
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		static private byte[] Ssl3Marker = new byte [4] { 0x43, 0x4c, 0x4e, 0x54 };
+        private static readonly byte[] Ssl3Marker = new byte [4] {0x43, 0x4c, 0x4e, 0x54};
 
-		protected override void ProcessAsSsl3()
-		{
-			// Compute handshake messages hashes
-			HashAlgorithm hash = new SslHandshakeHash(this.Context.MasterSecret);
+        protected override void ProcessAsSsl3()
+        {
+            // Compute handshake messages hashes
+            HashAlgorithm hash = new SslHandshakeHash(Context.MasterSecret);
 
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			hash.TransformBlock (data, 0, data.Length, data, 0);
-			hash.TransformBlock (Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
-			// hack to avoid memory allocation
-			hash.TransformFinalBlock (CipherSuite.EmptyArray, 0, 0);
+            var data = Context.HandshakeMessages.ToArray();
+            hash.TransformBlock(data, 0, data.Length, data, 0);
+            hash.TransformBlock(Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
+            // hack to avoid memory allocation
+            hash.TransformFinalBlock(CipherSuite.EmptyArray, 0, 0);
 
-			this.Write (hash.Hash);
-		}
+            Write(hash.Hash);
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			// Compute handshake messages hash
-			HashAlgorithm hash = new MD5SHA1();
+        protected override void ProcessAsTls1()
+        {
+            // Compute handshake messages hash
+            HashAlgorithm hash = new MD5SHA1();
 
-			// note: we could call HashAlgorithm.ComputeHash(Stream) but that would allocate (on Mono)
-			// a 4096 bytes buffer to process the hash - which is bigger than HandshakeMessages
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			byte[] digest = hash.ComputeHash (data, 0, data.Length);
+            // note: we could call HashAlgorithm.ComputeHash(Stream) but that would allocate (on Mono)
+            // a 4096 bytes buffer to process the hash - which is bigger than HandshakeMessages
+            var data = Context.HandshakeMessages.ToArray();
+            var digest = hash.ComputeHash(data, 0, data.Length);
 
-			// Write message
-			Write(this.Context.Write.Cipher.PRF(this.Context.MasterSecret, "client finished", digest, 12));
-		}
+            // Write message
+            Write(Context.Write.Cipher.PRF(Context.MasterSecret, "client finished", digest, 12));
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

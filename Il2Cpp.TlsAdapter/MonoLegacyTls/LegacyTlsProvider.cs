@@ -25,64 +25,51 @@
 // THE SOFTWARE.
 
 extern alias MonoSecurity;
-
 using System;
 using System.IO;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using Il2Cpp.TlsAdapter.MonoLegacyTls;
 using MonoSecurity::Mono.Security.Interface;
 
 namespace Mono.Net.Security
 {
-	/*
-	 * Strictly private - do not use outside the Mono.Net.Security directory.
-	 */
-	class LegacyTlsProvider : MobileTlsProvider
-	{
-		public override Guid ID {
-			get { return Guid.Empty; } // TODO: Fix
-		}
+    /*
+     * Strictly private - do not use outside the Mono.Net.Security directory.
+     */
+    internal class LegacyTlsProvider : MobileTlsProvider
+    {
+        public override Guid ID => Guid.Empty; // TODO: Fix
 
-		public override string Name {
-			get { return "legacy"; }
-		}
+        public override string Name => "legacy";
 
-		public override bool SupportsSslStream {
-			get { return true; }
-		}
+        public override bool SupportsSslStream => true;
 
-		public override bool SupportsConnectionInfo {
-			get { return false; }
-		}
+        public override bool SupportsConnectionInfo => false;
 
-		public override bool SupportsMonoExtensions {
-			get { return false; }
-		}
+        public override bool SupportsMonoExtensions => false;
 
-		public override bool SupportsCleanShutdown {
-			get { return false; }
-		}
+        public override bool SupportsCleanShutdown => false;
 
-		public override SslProtocols SupportedProtocols {
-			get { return SslProtocols.Tls; }
-		}
+        public override SslProtocols SupportedProtocols => SslProtocols.Tls;
 
-		public override MobileAuthenticatedStream CreateSslStream(SslStream sslStream, Stream innerStream, bool leaveInnerStreamOpen,
-			MonoTlsSettings settings)
-		{
-			return new LegacySslStream(innerStream, leaveInnerStreamOpen, sslStream, settings, this);
-		}
+        public override MobileAuthenticatedStream CreateSslStream(SslStream sslStream, Stream innerStream,
+            bool leaveInnerStreamOpen,
+            MonoTlsSettings settings)
+        {
+            return new LegacySslStream(innerStream, leaveInnerStreamOpen, sslStream, settings, this);
+        }
 
-		public override bool ValidateCertificate(ChainValidationHelper validator, string targetHost, bool serverMode,
-			X509CertificateCollection certificates, bool wantsChain, ref X509Chain chain, ref SslPolicyErrors errors,
-			ref int status11)
-		{
-			if (wantsChain)
-				chain = SystemCertificateValidator.CreateX509Chain (certificates);
-			var result = SystemCertificateValidator.Evaluate (validator.Settings, targetHost, certificates, chain, ref errors, ref status11);
-			return result;
-		}
-	}
+        public override bool ValidateCertificate(ChainValidationHelper validator, string targetHost, bool serverMode,
+            X509CertificateCollection certificates, bool wantsChain, ref X509Chain chain, ref SslPolicyErrors errors,
+            ref int status11)
+        {
+            if (wantsChain)
+                chain = SystemCertificateValidator.CreateX509Chain(certificates);
+            var result = SystemCertificateValidator.Evaluate(validator.Settings, targetHost, certificates, chain,
+                ref errors, ref status11);
+            return result;
+        }
+    }
 }

@@ -25,87 +25,83 @@
 extern alias MonoSecurity;
 using System;
 using System.Security.Cryptography;
-
 using SX509 = System.Security.Cryptography.X509Certificates;
-
-using Mono.Security.Cryptography;
-using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsServerKeyExchange : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerKeyExchange : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerKeyExchange(Context context)
-			: base(context, HandshakeType.ServerKeyExchange)
-		{
-		}
+        public TlsServerKeyExchange(Context context)
+            : base(context, HandshakeType.ServerKeyExchange)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override void Update()
-		{
-			throw new NotSupportedException();
-		}
+        public override void Update()
+        {
+            throw new NotSupportedException();
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Private Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        private byte[] createSignature(RSA rsa, byte[] buffer)
+        {
+            var hash = new MD5SHA1();
 
-		protected override void ProcessAsTls1()
-		{
-			ServerContext context = (ServerContext)this.Context;
+            // Create server params array
+            var stream = new TlsStream();
 
-			// Select the private key information
-			RSA rsa = (RSA)context.SslStream.PrivateKeyCertSelectionDelegate(
-				new SX509.X509Certificate(context.ServerSettings.Certificates[0].RawData),
-				null);
+            stream.Write(Context.RandomCS);
+            stream.Write(buffer, 0, buffer.Length);
 
-			RSAParameters rsaParams = rsa.ExportParameters(false);
+            hash.ComputeHash(stream.ToArray());
 
-			// Write Modulus
-			this.WriteInt24(rsaParams.Modulus.Length);
-			this.Write(rsaParams.Modulus, 0, rsaParams.Modulus.Length);
-			
-			// Write exponent
-			this.WriteInt24(rsaParams.Exponent.Length);
-			this.Write(rsaParams.Exponent, 0, rsaParams.Exponent.Length);
+            stream.Reset();
 
-			// Write signed params
-			byte[] signature = this.createSignature(rsa, this.ToArray());
-			this.WriteInt24(signature.Length);
-			this.Write(signature);
-		}
+            return hash.CreateSignature(rsa);
+        }
 
-		#endregion
+        #endregion
 
-		#region Private Methods
+        #region Protected Methods
 
-		private byte[] createSignature(RSA rsa, byte[] buffer)
-		{
-			MD5SHA1	hash = new MD5SHA1();
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-			// Create server params array
-			TlsStream stream = new TlsStream();
+        protected override void ProcessAsTls1()
+        {
+            var context = (ServerContext) Context;
 
-			stream.Write(this.Context.RandomCS);
-			stream.Write(buffer, 0, buffer.Length);
+            // Select the private key information
+            var rsa = (RSA) context.SslStream.PrivateKeyCertSelectionDelegate(
+                new SX509.X509Certificate(context.ServerSettings.Certificates[0].RawData),
+                null);
 
-			hash.ComputeHash(stream.ToArray());
+            var rsaParams = rsa.ExportParameters(false);
 
-			stream.Reset();
+            // Write Modulus
+            WriteInt24(rsaParams.Modulus.Length);
+            Write(rsaParams.Modulus, 0, rsaParams.Modulus.Length);
 
-			return hash.CreateSignature(rsa);			
-		}
+            // Write exponent
+            WriteInt24(rsaParams.Exponent.Length);
+            Write(rsaParams.Exponent, 0, rsaParams.Exponent.Length);
 
-		#endregion
-	}
+            // Write signed params
+            var signature = createSignature(rsa, ToArray());
+            WriteInt24(signature.Length);
+            Write(signature);
+        }
+
+        #endregion
+    }
 }

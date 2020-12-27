@@ -22,54 +22,51 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Security.Cryptography;
-
-using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsServerFinished : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerFinished : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerFinished(Context context) 
-			: base(context, HandshakeType.Finished)
-		{
-		}
+        public TlsServerFinished(Context context)
+            : base(context, HandshakeType.Finished)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		static private byte[] Ssl3Marker = new byte [4] { 0x53, 0x52, 0x56, 0x52 };
+        private static readonly byte[] Ssl3Marker = new byte [4] {0x53, 0x52, 0x56, 0x52};
 
-		protected override void ProcessAsSsl3()
-		{
-			// Compute handshake messages hashes
-			HashAlgorithm hash = new SslHandshakeHash(this.Context.MasterSecret);
+        protected override void ProcessAsSsl3()
+        {
+            // Compute handshake messages hashes
+            HashAlgorithm hash = new SslHandshakeHash(Context.MasterSecret);
 
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			hash.TransformBlock (data, 0, data.Length, data, 0);
-			hash.TransformBlock (Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
-			// hack to avoid memory allocation
-			hash.TransformFinalBlock (CipherSuite.EmptyArray, 0, 0);
+            var data = Context.HandshakeMessages.ToArray();
+            hash.TransformBlock(data, 0, data.Length, data, 0);
+            hash.TransformBlock(Ssl3Marker, 0, Ssl3Marker.Length, Ssl3Marker, 0);
+            // hack to avoid memory allocation
+            hash.TransformFinalBlock(CipherSuite.EmptyArray, 0, 0);
 
-			this.Write(hash.Hash);
-		}
+            Write(hash.Hash);
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			// Compute handshake messages hash
-			HashAlgorithm hash = new MD5SHA1();
-			byte[] data = this.Context.HandshakeMessages.ToArray ();
-			byte[] digest = hash.ComputeHash (data, 0, data.Length);
+        protected override void ProcessAsTls1()
+        {
+            // Compute handshake messages hash
+            HashAlgorithm hash = new MD5SHA1();
+            var data = Context.HandshakeMessages.ToArray();
+            var digest = hash.ComputeHash(data, 0, data.Length);
 
-			// Write message
-			this.Write(this.Context.Current.Cipher.PRF(
-				this.Context.MasterSecret, "server finished", digest, 12));
-		}
+            // Write message
+            Write(Context.Current.Cipher.PRF(
+                Context.MasterSecret, "server finished", digest, 12));
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

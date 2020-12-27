@@ -22,61 +22,48 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class ClientContext : Context
-	{
-		#region Fields
+    internal class ClientContext : Context
+    {
+        #region Constructors
 
-		private SslClientStream	sslStream;
-		private short			clientHelloProtocol;
+        public ClientContext(
+            SslClientStream stream,
+            SecurityProtocolType securityProtocolType,
+            string targetHost,
+            X509CertificateCollection clientCertificates)
+            : base(securityProtocolType)
+        {
+            SslStream = stream;
+            ClientSettings.Certificates = clientCertificates;
+            ClientSettings.TargetHost = targetHost;
+        }
 
-		#endregion
+        #endregion
 
-		#region Properties
+        #region Methods
 
-		public SslClientStream SslStream
-		{
-			get { return this.sslStream; }
-		}
+        public override void Clear()
+        {
+            ClientHelloProtocol = 0;
+            base.Clear();
+        }
 
-		public short ClientHelloProtocol
-		{
-			get { return this.clientHelloProtocol; }
-			set { this.clientHelloProtocol = value; }
-		}
+        #endregion
 
-		#endregion
+        #region Fields
 
-		#region Constructors
+        #endregion
 
-		public ClientContext(
-			SslClientStream				stream,
-			SecurityProtocolType		securityProtocolType,
-			string						targetHost,
-			X509CertificateCollection	clientCertificates) 
-			: base(securityProtocolType)
-		{
-			this.sslStream						= stream;
-			this.ClientSettings.Certificates	= clientCertificates;
-			this.ClientSettings.TargetHost		= targetHost;
-		}
+        #region Properties
 
-		#endregion
+        public SslClientStream SslStream { get; }
 
-		#region Methods
+        public short ClientHelloProtocol { get; set; }
 
-		public override void Clear()
-		{
-			this.clientHelloProtocol = 0;
-			base.Clear();
-		}
-
-		#endregion
-	}
+        #endregion
+    }
 }

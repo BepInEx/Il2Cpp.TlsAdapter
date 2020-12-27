@@ -22,31 +22,29 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsServerHelloDone : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerHelloDone : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerHelloDone(Context context, byte[] buffer) 
-			: base(context, HandshakeType.ServerHelloDone, buffer)
-		{
-		}
+        public TlsServerHelloDone(Context context, byte[] buffer)
+            : base(context, HandshakeType.ServerHelloDone, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-		}
+        protected override void ProcessAsSsl3()
+        {
+        }
 
-		protected override void ProcessAsTls1()
-		{
-		}
+        protected override void ProcessAsTls1()
+        {
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

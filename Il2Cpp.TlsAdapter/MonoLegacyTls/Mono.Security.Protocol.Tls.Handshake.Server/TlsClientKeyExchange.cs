@@ -22,8 +22,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -33,10 +31,10 @@ namespace Mono.Security.Protocol.Tls.Handshake.Server
     {
         #region Constructors
 
-        public TlsClientKeyExchange(Context context, byte[] buffer) : 
-			base(context,
-				HandshakeType.ClientKeyExchange, 
-				buffer)
+        public TlsClientKeyExchange(Context context, byte[] buffer) :
+            base(context,
+                HandshakeType.ClientKeyExchange,
+                buffer)
         {
         }
 
@@ -47,7 +45,7 @@ namespace Mono.Security.Protocol.Tls.Handshake.Server
         protected override void ProcessAsSsl3()
         {
             AsymmetricAlgorithm privKey = null;
-            ServerContext context = (ServerContext)this.Context;
+            var context = (ServerContext) Context;
 
             // Select the private key information
             privKey = context.SslStream.RaisePrivateKeySelection(
@@ -55,32 +53,30 @@ namespace Mono.Security.Protocol.Tls.Handshake.Server
                 null);
 
             if (privKey == null)
-            {
                 throw new TlsException(AlertDescription.UserCancelled, "Server certificate Private Key unavailable.");
-            }
 
             // Read client premaster secret
-            byte[] clientSecret = this.ReadBytes((int)this.Length);
+            var clientSecret = ReadBytes((int) Length);
 
             // Decrypt premaster secret
-            RSAPKCS1KeyExchangeDeformatter deformatter = new RSAPKCS1KeyExchangeDeformatter(privKey);
+            var deformatter = new RSAPKCS1KeyExchangeDeformatter(privKey);
 
-            byte[] preMasterSecret = deformatter.DecryptKeyExchange(clientSecret);
+            var preMasterSecret = deformatter.DecryptKeyExchange(clientSecret);
 
             // Create master secret
-            this.Context.Negotiating.Cipher.ComputeMasterSecret(preMasterSecret);
+            Context.Negotiating.Cipher.ComputeMasterSecret(preMasterSecret);
 
             // Create keys
-	    this.Context.Negotiating.Cipher.ComputeKeys ();
+            Context.Negotiating.Cipher.ComputeKeys();
 
             // Initialize Cipher Suite
-	    this.Context.Negotiating.Cipher.InitializeCipher ();
+            Context.Negotiating.Cipher.InitializeCipher();
         }
 
         protected override void ProcessAsTls1()
         {
             AsymmetricAlgorithm privKey = null;
-            ServerContext context = (ServerContext)this.Context;
+            var context = (ServerContext) Context;
 
             // Select the private key information
             // Select the private key information
@@ -89,26 +85,24 @@ namespace Mono.Security.Protocol.Tls.Handshake.Server
                 null);
 
             if (privKey == null)
-            {
                 throw new TlsException(AlertDescription.UserCancelled, "Server certificate Private Key unavailable.");
-            }
 
             // Read client premaster secret
-            byte[] clientSecret = this.ReadBytes(this.ReadInt16());
+            var clientSecret = ReadBytes(ReadInt16());
 
             // Decrypt premaster secret
-            RSAPKCS1KeyExchangeDeformatter deformatter = new RSAPKCS1KeyExchangeDeformatter(privKey);
+            var deformatter = new RSAPKCS1KeyExchangeDeformatter(privKey);
 
-            byte[] preMasterSecret = deformatter.DecryptKeyExchange(clientSecret);
+            var preMasterSecret = deformatter.DecryptKeyExchange(clientSecret);
 
             // Create master secret
-            this.Context.Negotiating.Cipher.ComputeMasterSecret(preMasterSecret);
+            Context.Negotiating.Cipher.ComputeMasterSecret(preMasterSecret);
 
             // Create keys
-            this.Context.Negotiating.Cipher.ComputeKeys();
+            Context.Negotiating.Cipher.ComputeKeys();
 
             // Initialize Cipher Suite
-            this.Context.Negotiating.Cipher.InitializeCipher();
+            Context.Negotiating.Cipher.InitializeCipher();
         }
 
         #endregion

@@ -24,52 +24,47 @@
 
 extern alias MonoSecurity;
 using System;
-using System.Collections;
-using System.Text.RegularExpressions;
-using System.Security.Cryptography;
 using X509Cert = System.Security.Cryptography.X509Certificates;
-
-using MonoSecurity::Mono.Security.X509;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsServerCertificate : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsServerCertificate : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsServerCertificate(Context context) 
-			: base(context, HandshakeType.Certificate)
-		{
-		}
+        public TlsServerCertificate(Context context)
+            : base(context, HandshakeType.Certificate)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			TlsStream certs = new TlsStream();
+        protected override void ProcessAsTls1()
+        {
+            var certs = new TlsStream();
 
-			foreach (X509Certificate certificate in this.Context.ServerSettings.Certificates)
-			{
-				// Write certificate length
-				certs.WriteInt24(certificate.RawData.Length);
+            foreach (var certificate in Context.ServerSettings.Certificates)
+            {
+                // Write certificate length
+                certs.WriteInt24(certificate.RawData.Length);
 
-				// Write certificate data
-				certs.Write(certificate.RawData);
-			}
+                // Write certificate data
+                certs.Write(certificate.RawData);
+            }
 
-			this.WriteInt24(Convert.ToInt32(certs.Length));
-			this.Write(certs.ToArray());
+            WriteInt24(Convert.ToInt32(certs.Length));
+            Write(certs.ToArray());
 
-			certs.Close();
-		}
+            certs.Close();
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

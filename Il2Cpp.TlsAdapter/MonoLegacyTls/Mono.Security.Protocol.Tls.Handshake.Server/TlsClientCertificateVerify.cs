@@ -22,65 +22,55 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-using System.Security.Cryptography.X509Certificates;
-
-using System.Security.Cryptography;
-using Mono.Security.Cryptography;
-
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsClientCertificateVerify : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsClientCertificateVerify : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsClientCertificateVerify(Context context, byte[] buffer)
-			: base(context, HandshakeType.CertificateVerify, buffer)
-		{
-		}
+        public TlsClientCertificateVerify(Context context, byte[] buffer)
+            : base(context, HandshakeType.CertificateVerify, buffer)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			ServerContext context = (ServerContext)this.Context;
-			int length = this.ReadInt16 ();
-			byte[] signature = this.ReadBytes (length);
+        protected override void ProcessAsSsl3()
+        {
+            var context = (ServerContext) Context;
+            int length = ReadInt16();
+            var signature = ReadBytes(length);
 
-			// Verify signature
-			SslHandshakeHash hash = new SslHandshakeHash(context.MasterSecret);			
-			hash.TransformFinalBlock(
-				context.HandshakeMessages.ToArray(), 
-				0, 
-				(int)context.HandshakeMessages.Length);
+            // Verify signature
+            var hash = new SslHandshakeHash(context.MasterSecret);
+            hash.TransformFinalBlock(
+                context.HandshakeMessages.ToArray(),
+                0,
+                (int) context.HandshakeMessages.Length);
 
-			if (!hash.VerifySignature(context.ClientSettings.CertificateRSA, signature))
-			{
-				throw new TlsException(AlertDescription.HandshakeFailiure, "Handshake Failure.");
-			}
-		}
+            if (!hash.VerifySignature(context.ClientSettings.CertificateRSA, signature))
+                throw new TlsException(AlertDescription.HandshakeFailiure, "Handshake Failure.");
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			ServerContext context = (ServerContext)this.Context;
-			int length = this.ReadInt16 ();
-			byte[] signature = this.ReadBytes (length);
+        protected override void ProcessAsTls1()
+        {
+            var context = (ServerContext) Context;
+            int length = ReadInt16();
+            var signature = ReadBytes(length);
 
-			// Verify signature
-			MD5SHA1 hash = new MD5SHA1();
-			hash.ComputeHash(
-				context.HandshakeMessages.ToArray(),
-				0,
-				(int)context.HandshakeMessages.Length);
+            // Verify signature
+            var hash = new MD5SHA1();
+            hash.ComputeHash(
+                context.HandshakeMessages.ToArray(),
+                0,
+                (int) context.HandshakeMessages.Length);
 
-			if (!hash.VerifySignature(context.ClientSettings.CertificateRSA, signature))
-			{
-				throw new TlsException (AlertDescription.HandshakeFailiure, "Handshake Failure.");
-			}
-		}
+            if (!hash.VerifySignature(context.ClientSettings.CertificateRSA, signature))
+                throw new TlsException(AlertDescription.HandshakeFailiure, "Handshake Failure.");
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

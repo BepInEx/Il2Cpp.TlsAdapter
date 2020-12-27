@@ -23,198 +23,182 @@
 //
 
 using System;
-using System.Security.Cryptography.X509Certificates;
-
 using System.Security.Cryptography;
 using Mono.Security.Cryptography;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsClientCertificateVerify : HandshakeMessage
-	{
-		#region Constructors
+    internal class TlsClientCertificateVerify : HandshakeMessage
+    {
+        #region Constructors
 
-		public TlsClientCertificateVerify(Context context) 
-			: base(context, HandshakeType.CertificateVerify)
-		{
-		}
+        public TlsClientCertificateVerify(Context context)
+            : base(context, HandshakeType.CertificateVerify)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override void Update()
-		{
-			base.Update();
-			this.Reset();
-		}
+        public override void Update()
+        {
+            base.Update();
+            Reset();
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			AsymmetricAlgorithm privKey = null;
-			ClientContext		context = (ClientContext)this.Context;
-			
-			privKey = context.SslStream.RaisePrivateKeySelection(
-				context.ClientSettings.ClientCertificate,
-				context.ClientSettings.TargetHost);
+        protected override void ProcessAsSsl3()
+        {
+            AsymmetricAlgorithm privKey = null;
+            var context = (ClientContext) Context;
 
-			if (privKey == null)
-			{
-				throw new TlsException(AlertDescription.UserCancelled, "Client certificate Private Key unavailable.");
-			}
-			else
-			{
-				SslHandshakeHash hash = new SslHandshakeHash(context.MasterSecret);			
-				hash.TransformFinalBlock(
-					context.HandshakeMessages.ToArray(), 
-					0, 
-					(int)context.HandshakeMessages.Length);
+            privKey = context.SslStream.RaisePrivateKeySelection(
+                context.ClientSettings.ClientCertificate,
+                context.ClientSettings.TargetHost);
 
-				// CreateSignature uses ((RSA)privKey).DecryptValue which is not implemented
-				// in RSACryptoServiceProvider. Other implementations likely implement DecryptValue
-				// so we will try the CreateSignature method.
-				byte[] signature = null;
-				if (!(privKey is RSACryptoServiceProvider))
-				{
-					try
-					{
-						signature = hash.CreateSignature((RSA)privKey);
-					}
-					catch (NotImplementedException)
-					{ }
-				}
-				// If DecryptValue is not implemented, then try to export the private
-				// key and let the RSAManaged class do the DecryptValue
-				if (signature == null)
-				{
-					// RSAManaged of the selected ClientCertificate 
-					// (at this moment the first one)
-					RSA rsa = this.getClientCertRSA((RSA)privKey);
+            if (privKey == null)
+                throw new TlsException(AlertDescription.UserCancelled, "Client certificate Private Key unavailable.");
 
-					// Write message
-					signature = hash.CreateSignature(rsa);
-				}
-				this.Write((short)signature.Length);
-				this.Write(signature, 0, signature.Length);
-			}
-		}
+            var hash = new SslHandshakeHash(context.MasterSecret);
+            hash.TransformFinalBlock(
+                context.HandshakeMessages.ToArray(),
+                0,
+                (int) context.HandshakeMessages.Length);
 
-		protected override void ProcessAsTls1()
-		{
-			AsymmetricAlgorithm privKey = null;
-			ClientContext		context = (ClientContext)this.Context;
-			
-			privKey = context.SslStream.RaisePrivateKeySelection(
-				context.ClientSettings.ClientCertificate,
-				context.ClientSettings.TargetHost);
+            // CreateSignature uses ((RSA)privKey).DecryptValue which is not implemented
+            // in RSACryptoServiceProvider. Other implementations likely implement DecryptValue
+            // so we will try the CreateSignature method.
+            byte[] signature = null;
+            if (!(privKey is RSACryptoServiceProvider))
+                try
+                {
+                    signature = hash.CreateSignature((RSA) privKey);
+                }
+                catch (NotImplementedException)
+                {
+                }
 
-			if (privKey == null)
-			{
-				throw new TlsException(AlertDescription.UserCancelled, "Client certificate Private Key unavailable.");
-			}
-			else
-			{
-				// Compute handshake messages hash
-				MD5SHA1 hash = new MD5SHA1();
-				hash.ComputeHash(
-					context.HandshakeMessages.ToArray(),
-					0,
-					(int)context.HandshakeMessages.Length);
+            // If DecryptValue is not implemented, then try to export the private
+            // key and let the RSAManaged class do the DecryptValue
+            if (signature == null)
+            {
+                // RSAManaged of the selected ClientCertificate 
+                // (at this moment the first one)
+                var rsa = getClientCertRSA((RSA) privKey);
 
-				// CreateSignature uses ((RSA)privKey).DecryptValue which is not implemented
-				// in RSACryptoServiceProvider. Other implementations likely implement DecryptValue
-				// so we will try the CreateSignature method.
-				byte[] signature = null;
-				if (!(privKey is RSACryptoServiceProvider))
-				{
-					try
-					{
-						signature = hash.CreateSignature((RSA)privKey);
-					}
-					catch (NotImplementedException)
-					{ }
-				}
-				// If DecryptValue is not implemented, then try to export the private
-				// key and let the RSAManaged class do the DecryptValue
-				if (signature == null)
-				{
-					// RSAManaged of the selected ClientCertificate 
-					// (at this moment the first one)
-					RSA rsa = this.getClientCertRSA((RSA)privKey);
+                // Write message
+                signature = hash.CreateSignature(rsa);
+            }
 
-					// Write message
-					signature = hash.CreateSignature(rsa);
-				}
-				this.Write((short)signature.Length);
-				this.Write(signature, 0, signature.Length);
-			}
-		}
+            Write((short) signature.Length);
+            Write(signature, 0, signature.Length);
+        }
 
-		#endregion
+        protected override void ProcessAsTls1()
+        {
+            AsymmetricAlgorithm privKey = null;
+            var context = (ClientContext) Context;
 
-		#region Private methods
+            privKey = context.SslStream.RaisePrivateKeySelection(
+                context.ClientSettings.ClientCertificate,
+                context.ClientSettings.TargetHost);
 
-		private RSA getClientCertRSA(RSA privKey)
-		{
-			RSAParameters rsaParams		= new RSAParameters();
-			RSAParameters privateParams = privKey.ExportParameters(true);
+            if (privKey == null)
+                throw new TlsException(AlertDescription.UserCancelled, "Client certificate Private Key unavailable.");
 
-			// for RSA m_publickey contains 2 ASN.1 integers
-			// the modulus and the public exponent
-			ASN1 pubkey = new ASN1 (this.Context.ClientSettings.Certificates[0].GetPublicKey());
-			ASN1 modulus = pubkey [0];
-			if ((modulus == null) || (modulus.Tag != 0x02))
-			{
-				return null;
-			}
-			ASN1 exponent = pubkey [1];
-			if (exponent.Tag != 0x02)
-			{
-				return null;
-			}
+            // Compute handshake messages hash
+            var hash = new MD5SHA1();
+            hash.ComputeHash(
+                context.HandshakeMessages.ToArray(),
+                0,
+                (int) context.HandshakeMessages.Length);
 
-			rsaParams.Modulus = this.getUnsignedBigInteger(modulus.Value);
-			rsaParams.Exponent = exponent.Value;
+            // CreateSignature uses ((RSA)privKey).DecryptValue which is not implemented
+            // in RSACryptoServiceProvider. Other implementations likely implement DecryptValue
+            // so we will try the CreateSignature method.
+            byte[] signature = null;
+            if (!(privKey is RSACryptoServiceProvider))
+                try
+                {
+                    signature = hash.CreateSignature((RSA) privKey);
+                }
+                catch (NotImplementedException)
+                {
+                }
 
-			// Set private key parameters
-			rsaParams.D			= privateParams.D;
-			rsaParams.DP		= privateParams.DP;
-			rsaParams.DQ		= privateParams.DQ;
-			rsaParams.InverseQ	= privateParams.InverseQ;
-			rsaParams.P			= privateParams.P;
-			rsaParams.Q			= privateParams.Q;			
+            // If DecryptValue is not implemented, then try to export the private
+            // key and let the RSAManaged class do the DecryptValue
+            if (signature == null)
+            {
+                // RSAManaged of the selected ClientCertificate 
+                // (at this moment the first one)
+                var rsa = getClientCertRSA((RSA) privKey);
 
-			// BUG: MS BCL 1.0 can't import a key which 
-			// isn't the same size as the one present in
-			// the container.
-			int keySize = (rsaParams.Modulus.Length << 3);
-			RSAManaged rsa = new RSAManaged(keySize);
-			rsa.ImportParameters (rsaParams);
+                // Write message
+                signature = hash.CreateSignature(rsa);
+            }
 
-			return (RSA)rsa;
-		}
+            Write((short) signature.Length);
+            Write(signature, 0, signature.Length);
+        }
 
-		private byte[] getUnsignedBigInteger(byte[] integer) 
-		{
-			if (integer [0] == 0x00) 
-			{
-				// this first byte is added so we're sure it's an unsigned integer
-				// however we can't feed it into RSAParameters or DSAParameters
-				int length = integer.Length - 1;
-				byte[] uinteger = new byte [length];
-				Buffer.BlockCopy (integer, 1, uinteger, 0, length);
-				return uinteger;
-			}
-			else
-			{
-				return integer;
-			}
-		}
+        #endregion
 
-		#endregion
-	}
+        #region Private methods
+
+        private RSA getClientCertRSA(RSA privKey)
+        {
+            var rsaParams = new RSAParameters();
+            var privateParams = privKey.ExportParameters(true);
+
+            // for RSA m_publickey contains 2 ASN.1 integers
+            // the modulus and the public exponent
+            var pubkey = new ASN1(Context.ClientSettings.Certificates[0].GetPublicKey());
+            var modulus = pubkey[0];
+            if (modulus == null || modulus.Tag != 0x02) return null;
+            var exponent = pubkey[1];
+            if (exponent.Tag != 0x02) return null;
+
+            rsaParams.Modulus = getUnsignedBigInteger(modulus.Value);
+            rsaParams.Exponent = exponent.Value;
+
+            // Set private key parameters
+            rsaParams.D = privateParams.D;
+            rsaParams.DP = privateParams.DP;
+            rsaParams.DQ = privateParams.DQ;
+            rsaParams.InverseQ = privateParams.InverseQ;
+            rsaParams.P = privateParams.P;
+            rsaParams.Q = privateParams.Q;
+
+            // BUG: MS BCL 1.0 can't import a key which 
+            // isn't the same size as the one present in
+            // the container.
+            var keySize = rsaParams.Modulus.Length << 3;
+            var rsa = new RSAManaged(keySize);
+            rsa.ImportParameters(rsaParams);
+
+            return rsa;
+        }
+
+        private byte[] getUnsignedBigInteger(byte[] integer)
+        {
+            if (integer[0] == 0x00)
+            {
+                // this first byte is added so we're sure it's an unsigned integer
+                // however we can't feed it into RSAParameters or DSAParameters
+                var length = integer.Length - 1;
+                var uinteger = new byte [length];
+                Buffer.BlockCopy(integer, 1, uinteger, 0, length);
+                return uinteger;
+            }
+
+            return integer;
+        }
+
+        #endregion
+    }
 }

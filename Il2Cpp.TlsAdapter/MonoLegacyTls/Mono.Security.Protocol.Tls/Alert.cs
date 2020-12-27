@@ -26,161 +26,91 @@ using System;
 
 namespace Mono.Security.Protocol.Tls
 {
-	#region Enumerations
+    #region Enumerations
 
-	[Serializable]
-	internal enum AlertLevel : byte
-	{
-		Warning = 1,
-		Fatal	= 2
-	}
+    [Serializable]
+    internal enum AlertLevel : byte
+    {
+        Warning = 1,
+        Fatal = 2
+    }
 
-	[Serializable]
-	internal enum AlertDescription : byte
-	{
-		CloseNotify				= 0,
-		UnexpectedMessage		= 10,
-		BadRecordMAC			= 20,
-		DecryptionFailed		= 21,
-		RecordOverflow			= 22,
-		DecompressionFailiure	= 30,
-		HandshakeFailiure		= 40,
-		NoCertificate			= 41,	// should be used in SSL3
-		BadCertificate			= 42,
-		UnsupportedCertificate	= 43,
-		CertificateRevoked		= 44,
-		CertificateExpired		= 45,
-		CertificateUnknown		= 46,
-		IlegalParameter			= 47,
-		UnknownCA				= 48,
-		AccessDenied			= 49,
-		DecodeError				= 50,
-		DecryptError			= 51,
-		ExportRestriction		= 60,
-		ProtocolVersion			= 70,
-		InsuficientSecurity		= 71,
-		InternalError			= 80,
-		UserCancelled			= 90,
-		NoRenegotiation			= 100
-	}
+    [Serializable]
+    internal enum AlertDescription : byte
+    {
+        CloseNotify = 0,
+        UnexpectedMessage = 10,
+        BadRecordMAC = 20,
+        DecryptionFailed = 21,
+        RecordOverflow = 22,
+        DecompressionFailiure = 30,
+        HandshakeFailiure = 40,
+        NoCertificate = 41, // should be used in SSL3
+        BadCertificate = 42,
+        UnsupportedCertificate = 43,
+        CertificateRevoked = 44,
+        CertificateExpired = 45,
+        CertificateUnknown = 46,
+        IlegalParameter = 47,
+        UnknownCA = 48,
+        AccessDenied = 49,
+        DecodeError = 50,
+        DecryptError = 51,
+        ExportRestriction = 60,
+        ProtocolVersion = 70,
+        InsuficientSecurity = 71,
+        InternalError = 80,
+        UserCancelled = 90,
+        NoRenegotiation = 100
+    }
 
-	#endregion
-	
-	internal class Alert
-	{
-		#region Fields
+    #endregion
 
-		private AlertLevel			level;
-		private AlertDescription	description;
+    internal class Alert
+    {
+        #region Private Methods
 
-		#endregion
+        private static AlertLevel inferAlertLevel(AlertDescription description)
+        {
+            switch (description)
+            {
+                case AlertDescription.CloseNotify:
+                case AlertDescription.NoRenegotiation:
+                case AlertDescription.UserCancelled:
+                    return AlertLevel.Warning;
 
-		#region Properties
+                case AlertDescription.AccessDenied:
+                case AlertDescription.BadCertificate:
+                case AlertDescription.BadRecordMAC:
+                case AlertDescription.CertificateExpired:
+                case AlertDescription.CertificateRevoked:
+                case AlertDescription.CertificateUnknown:
+                case AlertDescription.DecodeError:
+                case AlertDescription.DecompressionFailiure:
+                case AlertDescription.DecryptError:
+                case AlertDescription.DecryptionFailed:
+                case AlertDescription.ExportRestriction:
+                case AlertDescription.HandshakeFailiure:
+                case AlertDescription.IlegalParameter:
+                case AlertDescription.InsuficientSecurity:
+                case AlertDescription.InternalError:
+                case AlertDescription.ProtocolVersion:
+                case AlertDescription.RecordOverflow:
+                case AlertDescription.UnexpectedMessage:
+                case AlertDescription.UnknownCA:
+                case AlertDescription.UnsupportedCertificate:
+                default:
+                    return AlertLevel.Fatal;
+            }
+        }
 
-		public AlertLevel Level
-		{
-			get { return this.level; }
-		}
+        #endregion
 
-		public AlertDescription Description
-		{
-			get { return this.description; }
-		}
+        #region Static Methods
 
-		public string Message
-		{
-			get { return Alert.GetAlertMessage(this.description); }
-		}
-
-		public bool IsWarning
-		{
-			get { return this.level == AlertLevel.Warning ? true : false; }
-		}
-
-		/*
-		public bool IsFatal
-		{
-			get { return this.level == AlertLevel.Fatal ? true : false; }
-		}
-		*/
-
-		public bool IsCloseNotify
-		{
-			get
-			{
-				if (this.IsWarning &&
-					this.description == AlertDescription.CloseNotify)
-				{
-					return true;
-				}
-
-				return false;
-			}
-		}
-
-		#endregion
-
-		#region Constructors
-
-		public Alert(AlertDescription description)
-		{
-			this.description = description;
-			this.level = inferAlertLevel(description);
-		}
-
-		public Alert(
-			AlertLevel			level,
-			AlertDescription	description)
-		{
-			this.level			= level;
-			this.description	= description;
-		}
-
-		#endregion
-
-		#region Private Methods
-
-		private static AlertLevel inferAlertLevel(AlertDescription description)
-		{
-			switch (description)
-			{
-				case AlertDescription.CloseNotify:
-				case AlertDescription.NoRenegotiation:
-				case AlertDescription.UserCancelled:
-					return AlertLevel.Warning;
-
-				case AlertDescription.AccessDenied:
-				case AlertDescription.BadCertificate:
-				case AlertDescription.BadRecordMAC:
-				case AlertDescription.CertificateExpired:
-				case AlertDescription.CertificateRevoked:
-				case AlertDescription.CertificateUnknown:
-				case AlertDescription.DecodeError:
-				case AlertDescription.DecompressionFailiure:
-				case AlertDescription.DecryptError:
-				case AlertDescription.DecryptionFailed:
-				case AlertDescription.ExportRestriction:
-				case AlertDescription.HandshakeFailiure:
-				case AlertDescription.IlegalParameter:
-				case AlertDescription.InsuficientSecurity:
-				case AlertDescription.InternalError:
-				case AlertDescription.ProtocolVersion:
-				case AlertDescription.RecordOverflow:
-				case AlertDescription.UnexpectedMessage:
-				case AlertDescription.UnknownCA:
-				case AlertDescription.UnsupportedCertificate:
-				default:
-					return AlertLevel.Fatal;
-			}
-		}
-		
-		#endregion
-
-		#region Static Methods
-
-		public static string GetAlertMessage(AlertDescription description)
-		{
-			#if (DEBUG)
+        public static string GetAlertMessage(AlertDescription description)
+        {
+#if (DEBUG)
 			switch (description)
 			{
 				case AlertDescription.AccessDenied:
@@ -255,11 +185,64 @@ namespace Mono.Security.Protocol.Tls
 				default:
 					return "";
 			}
-			#else
-			return "The authentication or decryption has failed.";
-			#endif
-		}
+#else
+            return "The authentication or decryption has failed.";
+#endif
+        }
 
-		#endregion
-	}
+        #endregion
+
+        #region Fields
+
+        #endregion
+
+        #region Properties
+
+        public AlertLevel Level { get; }
+
+        public AlertDescription Description { get; }
+
+        public string Message => GetAlertMessage(Description);
+
+        public bool IsWarning => Level == AlertLevel.Warning ? true : false;
+
+        /*
+        public bool IsFatal
+        {
+            get { return this.level == AlertLevel.Fatal ? true : false; }
+        }
+        */
+
+        public bool IsCloseNotify
+        {
+            get
+            {
+                if (IsWarning &&
+                    Description == AlertDescription.CloseNotify)
+                    return true;
+
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Constructors
+
+        public Alert(AlertDescription description)
+        {
+            Description = description;
+            Level = inferAlertLevel(description);
+        }
+
+        public Alert(
+            AlertLevel level,
+            AlertDescription description)
+        {
+            Level = level;
+            Description = description;
+        }
+
+        #endregion
+    }
 }

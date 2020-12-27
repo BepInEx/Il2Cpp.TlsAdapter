@@ -22,119 +22,113 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Security.Cryptography;
+using System.Text;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsClientHello : HandshakeMessage
-	{
-		#region Fields
+    internal class TlsClientHello : HandshakeMessage
+    {
+        #region Fields
 
-		private byte[] random;
+        private byte[] random;
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Constructors
 
-		public TlsClientHello(Context context) 
-			: base(context, HandshakeType.ClientHello)
-		{
-		}
+        public TlsClientHello(Context context)
+            : base(context, HandshakeType.ClientHello)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Methods
+        #region Methods
 
-		public override void Update()
-		{
-			ClientContext context = (ClientContext)this.Context;
+        public override void Update()
+        {
+            var context = (ClientContext) Context;
 
-			base.Update();
+            base.Update();
 
-			context.ClientRandom		= random;
-			context.ClientHelloProtocol	= this.Context.Protocol;
+            context.ClientRandom = random;
+            context.ClientHelloProtocol = Context.Protocol;
 
-			random = null;
-		}
+            random = null;
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			// Client Version
-			this.Write(this.Context.Protocol);
+        protected override void ProcessAsSsl3()
+        {
+            // Client Version
+            Write(Context.Protocol);
 
-			// Random bytes - Unix time + Radom bytes [28]
-			TlsStream clientRandom = new TlsStream();
-			clientRandom.Write(this.Context.GetUnixTime());
-			clientRandom.Write(this.Context.GetSecureRandomBytes(28));
-			this.random = clientRandom.ToArray();
-			clientRandom.Reset();
+            // Random bytes - Unix time + Radom bytes [28]
+            var clientRandom = new TlsStream();
+            clientRandom.Write(Context.GetUnixTime());
+            clientRandom.Write(Context.GetSecureRandomBytes(28));
+            random = clientRandom.ToArray();
+            clientRandom.Reset();
 
-			this.Write(this.random);
+            Write(random);
 
-			// Session id
-			// Check if we have a cache session we could reuse
-			this.Context.SessionId = ClientSessionCache.FromHost (this.Context.ClientSettings.TargetHost);
-			if (this.Context.SessionId != null)
-			{
-				this.Write((byte)this.Context.SessionId.Length);
-				if (this.Context.SessionId.Length > 0)
-				{
-					this.Write(this.Context.SessionId);
-				}
-			}
-			else
-			{
-				this.Write((byte)0);
-			}
-			
-			// Write length of Cipher suites			
-			this.Write((short)(this.Context.SupportedCiphers.Count*2));
+            // Session id
+            // Check if we have a cache session we could reuse
+            Context.SessionId = ClientSessionCache.FromHost(Context.ClientSettings.TargetHost);
+            if (Context.SessionId != null)
+            {
+                Write((byte) Context.SessionId.Length);
+                if (Context.SessionId.Length > 0) Write(Context.SessionId);
+            }
+            else
+            {
+                Write((byte) 0);
+            }
 
-			// Write Supported Cipher suites
-			for (int i = 0; i < this.Context.SupportedCiphers.Count; i++)
-			{
-				this.Write((short)((IList<CipherSuite>)this.Context.SupportedCiphers)[i].Code);
-			}
+            // Write length of Cipher suites			
+            Write((short) (Context.SupportedCiphers.Count * 2));
 
-			// Compression methods length
-			this.Write((byte)1);
-			
-			// Compression methods ( 0 = none )
-			this.Write((byte)this.Context.CompressionMethod);
-		}
+            // Write Supported Cipher suites
+            for (var i = 0; i < Context.SupportedCiphers.Count; i++)
+                Write(((IList<CipherSuite>) Context.SupportedCiphers)[i].Code);
 
-		protected override void ProcessAsTls1()
-		{
-			ProcessAsSsl3 ();
+            // Compression methods length
+            Write((byte) 1);
 
-			// If applicable add the "server_name" extension to the hello message
-			// http://www.ietf.org/rfc/rfc3546.txt
-			string host = Context.ClientSettings.TargetHost;
-			// Our TargetHost might be an address (not a host *name*) - see bug #8553
-			// RFC3546 -> Literal IPv4 and IPv6 addresses are not permitted in "HostName".
-			IPAddress addr;
-			if (IPAddress.TryParse (host, out addr))
-				return;
+            // Compression methods ( 0 = none )
+            Write((byte) Context.CompressionMethod);
+        }
 
-			TlsStream extensions = new TlsStream ();
-			byte[] server_name = System.Text.Encoding.UTF8.GetBytes (host);
-			extensions.Write ((short) 0x0000);			// ExtensionType: server_name (0)
-			extensions.Write ((short) (server_name.Length + 5));	// ServerNameList (length)
-			extensions.Write ((short) (server_name.Length + 3));	// ServerName (length)
-			extensions.Write ((byte) 0x00);				// NameType: host_name (0)
-			extensions.Write ((short) server_name.Length);		// HostName (length)
-			extensions.Write (server_name);				// HostName (UTF8)
-			this.Write ((short) extensions.Length);
-			this.Write (extensions.ToArray ());
-		}
+        protected override void ProcessAsTls1()
+        {
+            ProcessAsSsl3();
 
-		#endregion
-	}
+            // If applicable add the "server_name" extension to the hello message
+            // http://www.ietf.org/rfc/rfc3546.txt
+            var host = Context.ClientSettings.TargetHost;
+            // Our TargetHost might be an address (not a host *name*) - see bug #8553
+            // RFC3546 -> Literal IPv4 and IPv6 addresses are not permitted in "HostName".
+            IPAddress addr;
+            if (IPAddress.TryParse(host, out addr))
+                return;
+
+            var extensions = new TlsStream();
+            var server_name = Encoding.UTF8.GetBytes(host);
+            extensions.Write((short) 0x0000); // ExtensionType: server_name (0)
+            extensions.Write((short) (server_name.Length + 5)); // ServerNameList (length)
+            extensions.Write((short) (server_name.Length + 3)); // ServerName (length)
+            extensions.Write((byte) 0x00); // NameType: host_name (0)
+            extensions.Write((short) server_name.Length); // HostName (length)
+            extensions.Write(server_name); // HostName (UTF8)
+            Write((short) extensions.Length);
+            Write(extensions.ToArray());
+        }
+
+        #endregion
+    }
 }

@@ -26,125 +26,124 @@ using System;
 
 namespace Mono.Security.Protocol.Tls.Handshake.Client
 {
-	internal class TlsServerHello : HandshakeMessage
-	{
-		#region Fields
+    internal class TlsServerHello : HandshakeMessage
+    {
+        #region Constructors
 
-		private SecurityCompressionType	compressionMethod;
-		private byte[]					random;
-		private byte[]					sessionId;
-		private CipherSuite	cipherSuite;
-		
-		#endregion
+        public TlsServerHello(Context context, byte[] buffer)
+            : base(context, HandshakeType.ServerHello, buffer)
+        {
+        }
 
-		#region Constructors
+        #endregion
 
-		public TlsServerHello(Context context, byte[] buffer) 
-			: base(context, HandshakeType.ServerHello, buffer)
-		{
-		}
+        #region Methods
 
-		#endregion
+        public override void Update()
+        {
+            base.Update();
 
-		#region Methods
+            Context.SessionId = sessionId;
+            Context.ServerRandom = random;
+            Context.Negotiating.Cipher = cipherSuite;
+            Context.CompressionMethod = compressionMethod;
+            Context.ProtocolNegotiated = true;
 
-		public override void Update()
-		{
-			base.Update();
+            DebugHelper.WriteLine("Selected Cipher Suite {0}", cipherSuite.Name);
+            DebugHelper.WriteLine("Client random", Context.ClientRandom);
+            DebugHelper.WriteLine("Server random", Context.ServerRandom);
 
-			this.Context.SessionId			= this.sessionId;
-			this.Context.ServerRandom		= this.random;
-			this.Context.Negotiating.Cipher = this.cipherSuite;
-			this.Context.CompressionMethod	= this.compressionMethod;
-			this.Context.ProtocolNegotiated	= true;
+            // Compute ClientRandom + ServerRandom
+            var clen = Context.ClientRandom.Length;
+            var slen = Context.ServerRandom.Length;
+            var rlen = clen + slen;
+            var cs = new byte[rlen];
+            Buffer.BlockCopy(Context.ClientRandom, 0, cs, 0, clen);
+            Buffer.BlockCopy(Context.ServerRandom, 0, cs, clen, slen);
+            Context.RandomCS = cs;
 
-			DebugHelper.WriteLine("Selected Cipher Suite {0}", this.cipherSuite.Name);
-			DebugHelper.WriteLine("Client random", this.Context.ClientRandom);
-			DebugHelper.WriteLine("Server random", this.Context.ServerRandom);
-			
-			// Compute ClientRandom + ServerRandom
-			int clen = this.Context.ClientRandom.Length;
-			int slen = this.Context.ServerRandom.Length;
-			int rlen = clen + slen;
-			byte[] cs = new byte[rlen];
-			Buffer.BlockCopy (this.Context.ClientRandom, 0, cs, 0, clen);
-			Buffer.BlockCopy (this.Context.ServerRandom, 0, cs, clen, slen);
-			this.Context.RandomCS = cs;
-			
-			// Server Random + Client Random
-			byte[] sc = new byte[rlen];
-			Buffer.BlockCopy (this.Context.ServerRandom, 0, sc, 0, slen);
-			Buffer.BlockCopy (this.Context.ClientRandom, 0, sc, slen, clen);
-			this.Context.RandomSC = sc;
-		}
+            // Server Random + Client Random
+            var sc = new byte[rlen];
+            Buffer.BlockCopy(Context.ServerRandom, 0, sc, 0, slen);
+            Buffer.BlockCopy(Context.ClientRandom, 0, sc, slen, clen);
+            Context.RandomSC = sc;
+        }
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Private Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        private void processProtocol(short protocol)
+        {
+            var serverProtocol = Context.DecodeProtocolCode(protocol);
 
-		protected override void ProcessAsTls1()
-		{
-			// Read protocol version
-			this.processProtocol(this.ReadInt16());
-			
-			// Read random  - Unix time + Random bytes
-			this.random	= this.ReadBytes(32);
+            if ((serverProtocol & Context.SecurityProtocolFlags) == serverProtocol ||
+                (Context.SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
+            {
+                Context.SecurityProtocol = serverProtocol;
+                Context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers(false, serverProtocol);
 
-			// Read Session id
-			int length = (int) ReadByte ();
-			if (length > 0)
-			{
-				this.sessionId = this.ReadBytes(length);
-				ClientSessionCache.Add (this.Context.ClientSettings.TargetHost, this.sessionId);
-				this.Context.AbbreviatedHandshake = Compare (this.sessionId, this.Context.SessionId);
-			} 
-			else
-			{
-				this.Context.AbbreviatedHandshake = false;
-			}
+                DebugHelper.WriteLine("Selected protocol {0}", serverProtocol);
+            }
+            else
+            {
+                throw new TlsException(
+                    AlertDescription.ProtocolVersion,
+                    "Incorrect protocol version received from server");
+            }
+        }
 
-			// Read cipher suite
-			short cipherCode = this.ReadInt16();
-			if (this.Context.SupportedCiphers.IndexOf(cipherCode) == -1)
-			{
-				// The server has sent an invalid ciphersuite
-				throw new TlsException(AlertDescription.InsuficientSecurity, "Invalid cipher suite received from server");
-			}
-			this.cipherSuite = this.Context.SupportedCiphers[cipherCode];
-			
-			// Read compression methods ( always 0 )
-			this.compressionMethod = (SecurityCompressionType)this.ReadByte();
-		}
+        #endregion
 
-		#endregion
+        #region Fields
 
-		#region Private Methods
+        private SecurityCompressionType compressionMethod;
+        private byte[] random;
+        private byte[] sessionId;
+        private CipherSuite cipherSuite;
 
-		private void processProtocol(short protocol)
-		{
-			SecurityProtocolType serverProtocol = this.Context.DecodeProtocolCode(protocol);
+        #endregion
 
-			if ((serverProtocol & this.Context.SecurityProtocolFlags) == serverProtocol ||
-				(this.Context.SecurityProtocolFlags & SecurityProtocolType.Default) == SecurityProtocolType.Default)
-			{
-				this.Context.SecurityProtocol = serverProtocol;
-				this.Context.SupportedCiphers = CipherSuiteFactory.GetSupportedCiphers (false, serverProtocol);
+        #region Protected Methods
 
-				DebugHelper.WriteLine("Selected protocol {0}", serverProtocol);
-			}
-			else
-			{
-				throw new TlsException(
-					AlertDescription.ProtocolVersion,
-					"Incorrect protocol version received from server");
-			}
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		#endregion
-	}
+        protected override void ProcessAsTls1()
+        {
+            // Read protocol version
+            processProtocol(ReadInt16());
+
+            // Read random  - Unix time + Random bytes
+            random = ReadBytes(32);
+
+            // Read Session id
+            int length = ReadByte();
+            if (length > 0)
+            {
+                sessionId = ReadBytes(length);
+                ClientSessionCache.Add(Context.ClientSettings.TargetHost, sessionId);
+                Context.AbbreviatedHandshake = Compare(sessionId, Context.SessionId);
+            }
+            else
+            {
+                Context.AbbreviatedHandshake = false;
+            }
+
+            // Read cipher suite
+            var cipherCode = ReadInt16();
+            if (Context.SupportedCiphers.IndexOf(cipherCode) == -1)
+                // The server has sent an invalid ciphersuite
+                throw new TlsException(AlertDescription.InsuficientSecurity,
+                    "Invalid cipher suite received from server");
+            cipherSuite = Context.SupportedCiphers[cipherCode];
+
+            // Read compression methods ( always 0 )
+            compressionMethod = (SecurityCompressionType) ReadByte();
+        }
+
+        #endregion
+    }
 }

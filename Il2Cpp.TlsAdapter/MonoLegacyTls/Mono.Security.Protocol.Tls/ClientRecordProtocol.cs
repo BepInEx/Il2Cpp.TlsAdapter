@@ -25,171 +25,167 @@
 using System;
 using System.Globalization;
 using System.IO;
-
 using Mono.Security.Protocol.Tls.Handshake;
 using Mono.Security.Protocol.Tls.Handshake.Client;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class ClientRecordProtocol : RecordProtocol
-	{
-		#region Constructors
+    internal class ClientRecordProtocol : RecordProtocol
+    {
+        #region Constructors
 
-		public ClientRecordProtocol(
-			Stream			innerStream, 
-			ClientContext	context) : base(innerStream, context)
-		{
-		}
+        public ClientRecordProtocol(
+            Stream innerStream,
+            ClientContext context) : base(innerStream, context)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Send Messages
+        #region Send Messages
 
-		public override HandshakeMessage GetMessage(HandshakeType type)
-		{
-			HandshakeMessage msg = this.createClientHandshakeMessage(type);
+        public override HandshakeMessage GetMessage(HandshakeType type)
+        {
+            var msg = createClientHandshakeMessage(type);
 
-			return msg;
-		}
+            return msg;
+        }
 
-		#endregion
+        #endregion
 
-		#region Handshake Processing Methods
+        #region Handshake Processing Methods
 
-		protected override void ProcessHandshakeMessage(TlsStream handMsg)
-		{
-			HandshakeType		handshakeType	= (HandshakeType)handMsg.ReadByte();
-			HandshakeMessage	message			= null;
+        protected override void ProcessHandshakeMessage(TlsStream handMsg)
+        {
+            var handshakeType = (HandshakeType) handMsg.ReadByte();
+            HandshakeMessage message = null;
 
-			DebugHelper.WriteLine(">>>> Processing Handshake record ({0})", handshakeType);
+            DebugHelper.WriteLine(">>>> Processing Handshake record ({0})", handshakeType);
 
-			// Read message length
-			int length = handMsg.ReadInt24();
+            // Read message length
+            var length = handMsg.ReadInt24();
 
-			// Read message data
-			byte[] data = null;
-			if (length > 0)
-			{
-				data = new byte[length];
-				handMsg.Read (data, 0, length);
-			}
+            // Read message data
+            byte[] data = null;
+            if (length > 0)
+            {
+                data = new byte[length];
+                handMsg.Read(data, 0, length);
+            }
 
-			// Create and process the server message
-			message = this.createServerHandshakeMessage(handshakeType, data);
-			if (message != null)
-			{
-				message.Process();
-			}
+            // Create and process the server message
+            message = createServerHandshakeMessage(handshakeType, data);
+            if (message != null) message.Process();
 
-			// Update the last handshake message
-			this.Context.LastHandshakeMsg = handshakeType;
+            // Update the last handshake message
+            Context.LastHandshakeMsg = handshakeType;
 
-			// Update session
-			if (message != null)
-			{
-				message.Update();
-				this.Context.HandshakeMessages.WriteByte ((byte) handshakeType);
-				this.Context.HandshakeMessages.WriteInt24 (length);
-				if (length > 0) 
-				{
-					this.Context.HandshakeMessages.Write (data, 0, data.Length);
-				}
-			}
-		}
+            // Update session
+            if (message != null)
+            {
+                message.Update();
+                Context.HandshakeMessages.WriteByte((byte) handshakeType);
+                Context.HandshakeMessages.WriteInt24(length);
+                if (length > 0) Context.HandshakeMessages.Write(data, 0, data.Length);
+            }
+        }
 
-		#endregion
+        #endregion
 
-		#region Client Handshake Message Factories
+        #region Client Handshake Message Factories
 
-		private HandshakeMessage createClientHandshakeMessage(HandshakeType type)
-		{
-			switch (type)
-			{
-				case HandshakeType.ClientHello:
-					return new TlsClientHello(this.context);
+        private HandshakeMessage createClientHandshakeMessage(HandshakeType type)
+        {
+            switch (type)
+            {
+                case HandshakeType.ClientHello:
+                    return new TlsClientHello(context);
 
-				case HandshakeType.Certificate:
-					return new TlsClientCertificate(this.context);
+                case HandshakeType.Certificate:
+                    return new TlsClientCertificate(context);
 
-				case HandshakeType.ClientKeyExchange:
-					return new TlsClientKeyExchange(this.context);
+                case HandshakeType.ClientKeyExchange:
+                    return new TlsClientKeyExchange(context);
 
-				case HandshakeType.CertificateVerify:
-					return new TlsClientCertificateVerify(this.context);
+                case HandshakeType.CertificateVerify:
+                    return new TlsClientCertificateVerify(context);
 
-				case HandshakeType.Finished:
-					return new TlsClientFinished(this.context);
+                case HandshakeType.Finished:
+                    return new TlsClientFinished(context);
 
-				default:
-					throw new InvalidOperationException("Unknown client handshake message type: " + type.ToString() );
-			}
-		}
+                default:
+                    throw new InvalidOperationException("Unknown client handshake message type: " + type);
+            }
+        }
 
-		private HandshakeMessage createServerHandshakeMessage(
-			HandshakeType type, byte[] buffer)
-		{
-			ClientContext context = (ClientContext)this.context;
-			var last = context.LastHandshakeMsg;
+        private HandshakeMessage createServerHandshakeMessage(
+            HandshakeType type, byte[] buffer)
+        {
+            var context = (ClientContext) this.context;
+            var last = context.LastHandshakeMsg;
 
-			switch (type)
-			{
-				case HandshakeType.HelloRequest:
-					if (context.HandshakeState != HandshakeState.Started)
-					{
-						context.HandshakeState = HandshakeState.None;
-						// re-negotiation will occur at next read/write
-						// (i.e. not during an existing encode/decode op)
-					}
-					else
-					{
-						this.SendAlert(
-							AlertLevel.Warning,
-							AlertDescription.NoRenegotiation);
-					}
-					return null;
+            switch (type)
+            {
+                case HandshakeType.HelloRequest:
+                    if (context.HandshakeState != HandshakeState.Started)
+                        context.HandshakeState = HandshakeState.None;
+                    // re-negotiation will occur at next read/write
+                    // (i.e. not during an existing encode/decode op)
+                    else
+                        SendAlert(
+                            AlertLevel.Warning,
+                            AlertDescription.NoRenegotiation);
+                    return null;
 
-				case HandshakeType.ServerHello:
-					if (last != HandshakeType.HelloRequest)
-						break;
-					return new TlsServerHello(this.context, buffer);
+                case HandshakeType.ServerHello:
+                    if (last != HandshakeType.HelloRequest)
+                        break;
+                    return new TlsServerHello(this.context, buffer);
 
-					// Optional
-				case HandshakeType.Certificate:
-					if (last != HandshakeType.ServerHello)
-						break;
-					return new TlsServerCertificate(this.context, buffer);
+                // Optional
+                case HandshakeType.Certificate:
+                    if (last != HandshakeType.ServerHello)
+                        break;
+                    return new TlsServerCertificate(this.context, buffer);
 
-					// Optional
-				case HandshakeType.CertificateRequest:
-					if (last == HandshakeType.ServerKeyExchange || last == HandshakeType.Certificate)
-						return new TlsServerCertificateRequest(this.context, buffer);
-					break;
+                // Optional
+                case HandshakeType.CertificateRequest:
+                    if (last == HandshakeType.ServerKeyExchange || last == HandshakeType.Certificate)
+                        return new TlsServerCertificateRequest(this.context, buffer);
+                    break;
 
-				case HandshakeType.ServerHelloDone:
-					if (last == HandshakeType.CertificateRequest || last == HandshakeType.Certificate || last == HandshakeType.ServerHello)
-						return new TlsServerHelloDone(this.context, buffer);
-					break;
+                case HandshakeType.ServerHelloDone:
+                    if (last == HandshakeType.CertificateRequest || last == HandshakeType.Certificate ||
+                        last == HandshakeType.ServerHello)
+                        return new TlsServerHelloDone(this.context, buffer);
+                    break;
 
-				case HandshakeType.Finished:
-					// depends if a full (ServerHelloDone) or an abbreviated handshake (ServerHello) is being done
-					bool check = context.AbbreviatedHandshake ? (last == HandshakeType.ServerHello) : (last == HandshakeType.ServerHelloDone);
-					// ChangeCipherSpecDone is not an handshake message (it's a content type) but still needs to be happens before finished
-					if (check && context.ChangeCipherSpecDone) {
-						context.ChangeCipherSpecDone = false;
-						return new TlsServerFinished (this.context, buffer);
-					}
-					break;
-					
-				default:
-					throw new TlsException(
-						AlertDescription.UnexpectedMessage,
-						String.Format(CultureInfo.CurrentUICulture,
-							"Unknown server handshake message received ({0})", 
-							type.ToString()));
-			}
-			throw new TlsException (AlertDescription.HandshakeFailiure, String.Format ("Protocol error, unexpected protocol transition from {0} to {1}", last, type));
-		}
+                case HandshakeType.Finished:
+                    // depends if a full (ServerHelloDone) or an abbreviated handshake (ServerHello) is being done
+                    var check = context.AbbreviatedHandshake
+                        ? last == HandshakeType.ServerHello
+                        : last == HandshakeType.ServerHelloDone;
+                    // ChangeCipherSpecDone is not an handshake message (it's a content type) but still needs to be happens before finished
+                    if (check && context.ChangeCipherSpecDone)
+                    {
+                        context.ChangeCipherSpecDone = false;
+                        return new TlsServerFinished(this.context, buffer);
+                    }
 
-		#endregion
-	}
+                    break;
+
+                default:
+                    throw new TlsException(
+                        AlertDescription.UnexpectedMessage,
+                        string.Format(CultureInfo.CurrentUICulture,
+                            "Unknown server handshake message received ({0})",
+                            type.ToString()));
+            }
+
+            throw new TlsException(AlertDescription.HandshakeFailiure,
+                string.Format("Protocol error, unexpected protocol transition from {0} to {1}", last, type));
+        }
+
+        #endregion
+    }
 }

@@ -23,97 +23,81 @@
 //
 
 extern alias MonoSecurity;
-using System;
-using System.Collections;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
 using Mono.Security.Protocol.Tls.Handshake;
 using MonoSecurity::Mono.Security.Interface;
-using MonoX509 = MonoSecurity::Mono.Security.X509;
+using MonoSecurity::Mono.Security.X509;
+using X509Certificate = System.Security.Cryptography.X509Certificates.X509Certificate;
+using X509CertificateCollection = MonoSecurity::Mono.Security.X509.X509CertificateCollection;
 
 namespace Mono.Security.Protocol.Tls
 {
-	internal class ServerContext : Context
-	{
-		#region Fields
+    internal class ServerContext : Context
+    {
+        #region Constructors
 
-		private SslServerStream sslStream;
-		private bool request_client_certificate;
-		private bool			clientCertificateRequired;
+        public ServerContext(
+            SslServerStream stream,
+            SecurityProtocolType securityProtocolType,
+            X509Certificate serverCertificate,
+            bool clientCertificateRequired,
+            bool requestClientCertificate)
+            : base(securityProtocolType)
+        {
+            SslStream = stream;
+            ClientCertificateRequired = clientCertificateRequired;
+            RequestClientCertificate = requestClientCertificate;
 
-		#endregion
+            // Convert the System.Security cert to a Mono Cert
+            var cert = new MonoSecurity::Mono.Security.X509.X509Certificate(serverCertificate.GetRawCertData());
 
-		#region Properties
+            // Add server certificate to the certificate collection
+            ServerSettings.Certificates = new X509CertificateCollection();
+            ServerSettings.Certificates.Add(cert);
 
-		public SslServerStream SslStream
-		{
-			get { return this.sslStream; }
-		}
+            ServerSettings.UpdateCertificateRSA();
 
-		public bool	ClientCertificateRequired
-		{
-			get { return this.clientCertificateRequired; }
-		}
+            if (CertificateValidationHelper.SupportsX509Chain)
+            {
+                // Build the chain for the certificate and if the chain is correct, add all certificates 
+                // (except the root certificate [FIRST ONE] ... the client is supposed to know that one,
+                // otherwise the whole concept of a trusted chain doesn't work out ... 
+                var chain = new X509Chain(X509StoreManager.IntermediateCACertificates);
 
-		public bool RequestClientCertificate {
-			get { return request_client_certificate; }
-		}
+                if (chain.Build(cert))
+                    for (var j = chain.Chain.Count - 1; j > 0; j--)
+                        ServerSettings.Certificates.Add(chain.Chain[j]);
+            }
 
-		#endregion
+            // Add requested certificate types
+            ServerSettings.CertificateTypes = new ClientCertificateType [ServerSettings.Certificates.Count];
+            for (var j = 0; j < ServerSettings.CertificateTypes.Length; j++)
+                ServerSettings.CertificateTypes[j] = ClientCertificateType.RSA;
 
-		#region Constructors
+            if (CertificateValidationHelper.SupportsX509Chain)
+            {
+                // Add certificate authorities
+                var trusted = X509StoreManager.TrustedRootCertificates;
+                var list = new string [trusted.Count];
+                var i = 0;
+                foreach (var root in trusted) list[i++] = root.IssuerName;
+                ServerSettings.DistinguisedNames = list;
+            }
+        }
 
-		public ServerContext(
-			SslServerStream			stream,
-			SecurityProtocolType	securityProtocolType,
-			X509Certificate			serverCertificate,
-			bool					clientCertificateRequired,
-			bool					requestClientCertificate)
-			: base(securityProtocolType)
-		{
-			this.sslStream					= stream;
-			this.clientCertificateRequired	= clientCertificateRequired;
-			this.request_client_certificate	= requestClientCertificate;
+        #endregion
 
-			// Convert the System.Security cert to a Mono Cert
-			MonoX509.X509Certificate cert = new MonoX509.X509Certificate(serverCertificate.GetRawCertData());
+        #region Fields
 
-			// Add server certificate to the certificate collection
-			this.ServerSettings.Certificates = new MonoX509.X509CertificateCollection();
-			this.ServerSettings.Certificates.Add(cert);
+        #endregion
 
-			this.ServerSettings.UpdateCertificateRSA();
+        #region Properties
 
-			if (CertificateValidationHelper.SupportsX509Chain) {
-				// Build the chain for the certificate and if the chain is correct, add all certificates 
-				// (except the root certificate [FIRST ONE] ... the client is supposed to know that one,
-				// otherwise the whole concept of a trusted chain doesn't work out ... 
-				MonoX509.X509Chain chain = new MonoX509.X509Chain (MonoX509.X509StoreManager.IntermediateCACertificates);
+        public SslServerStream SslStream { get; }
 
-				if (chain.Build (cert)) {
-					for (int j = chain.Chain.Count - 1; j > 0; j--)
-						ServerSettings.Certificates.Add (chain.Chain [j]);
-				}
-			}
+        public bool ClientCertificateRequired { get; }
 
-			// Add requested certificate types
-			ServerSettings.CertificateTypes = new ClientCertificateType [ServerSettings.Certificates.Count];
-			for (int j = 0; j < this.ServerSettings.CertificateTypes.Length; j++)
-				ServerSettings.CertificateTypes [j] = ClientCertificateType.RSA;
+        public bool RequestClientCertificate { get; }
 
-			if (CertificateValidationHelper.SupportsX509Chain) {
-				// Add certificate authorities
-				MonoX509.X509CertificateCollection trusted = MonoX509.X509StoreManager.TrustedRootCertificates;
-				string[] list = new string [trusted.Count];
-				int i = 0;
-				foreach (MonoX509.X509Certificate root in trusted) {
-					list [i++] = root.IssuerName;
-				}
-				this.ServerSettings.DistinguisedNames = list;
-			}
-		}
-
-		#endregion
-	}
+        #endregion
+    }
 }

@@ -22,101 +22,99 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
-
 namespace Mono.Security.Protocol.Tls.Handshake.Server
 {
-	internal class TlsServerHello : HandshakeMessage
-	{
-		#region Private Fields
+    internal class TlsServerHello : HandshakeMessage
+    {
+        #region Constructors
 
-		private int		unixTime;
-		private byte[]	random;
+        public TlsServerHello(Context context)
+            : base(context, HandshakeType.ServerHello)
+        {
+        }
 
-		#endregion
+        #endregion
 
-		#region Constructors
+        #region Methods
 
-		public TlsServerHello(Context context) 
-			: base(context, HandshakeType.ServerHello)
-		{
-		}
+        public override void Update()
+        {
+            base.Update();
 
-		#endregion
+            var random = new TlsStream();
 
-		#region Methods
+            // Compute Server Random
+            random.Write(unixTime);
+            random.Write(this.random);
 
-		public override void Update()
-		{
-			base.Update();
+            Context.ServerRandom = random.ToArray();
 
-			TlsStream random = new TlsStream();
+            // Compute ClientRandom + ServerRandom
+            random.Reset();
+            random.Write(Context.ClientRandom);
+            random.Write(Context.ServerRandom);
 
-			// Compute Server Random
-			random.Write(this.unixTime);
-			random.Write(this.random);
+            Context.RandomCS = random.ToArray();
 
-			this.Context.ServerRandom = random.ToArray();
+            // Server Random + Client Random
+            random.Reset();
+            random.Write(Context.ServerRandom);
+            random.Write(Context.ClientRandom);
 
-			// Compute ClientRandom + ServerRandom
-			random.Reset();
-			random.Write(this.Context.ClientRandom);
-			random.Write(this.Context.ServerRandom);
+            Context.RandomSC = random.ToArray();
 
-			this.Context.RandomCS = random.ToArray();
+            random.Reset();
+        }
 
-			// Server Random + Client Random
-			random.Reset();
-			random.Write(this.Context.ServerRandom);
-			random.Write(this.Context.ClientRandom);
+        #endregion
 
-			this.Context.RandomSC = random.ToArray();
+        #region Private Fields
 
-			random.Reset();
-		}
+        private int unixTime;
+        private byte[] random;
 
-		#endregion
+        #endregion
 
-		#region Protected Methods
+        #region Protected Methods
 
-		protected override void ProcessAsSsl3()
-		{
-			this.ProcessAsTls1();
-		}
+        protected override void ProcessAsSsl3()
+        {
+            ProcessAsTls1();
+        }
 
-		protected override void ProcessAsTls1()
-		{
-			// Write protocol version
-			this.Write(this.Context.Protocol);
-			
-			// Write Unix time
-			this.unixTime = this.Context.GetUnixTime();
-			this.Write(this.unixTime);
+        protected override void ProcessAsTls1()
+        {
+            // Write protocol version
+            Write(Context.Protocol);
 
-			// Write Random bytes
-			random = this.Context.GetSecureRandomBytes(28);
-			this.Write(this.random);
-						
-			if (this.Context.SessionId == null)
-			{
-				this.WriteByte(0);
-			}
-			else
-			{
-				// Write Session ID length
-				this.WriteByte((byte)this.Context.SessionId.Length);
+            // Write Unix time
+            unixTime = Context.GetUnixTime();
+            Write(unixTime);
 
-				// Write Session ID
-				this.Write(this.Context.SessionId);
-			}
+            // Write Random bytes
+            random = Context.GetSecureRandomBytes(28);
+            Write(random);
 
-			// Write selected cipher suite
-			this.Write(this.Context.Negotiating.Cipher.Code);
-			
-			// Write selected compression method
-			this.WriteByte((byte)this.Context.CompressionMethod);
-		}
+            if (Context.SessionId == null)
+            {
+                WriteByte(0);
+            }
+            else
+            {
+                // Write Session ID length
+                WriteByte((byte) Context.SessionId.Length);
 
-		#endregion
-	}
+                // Write Session ID
+                Write(Context.SessionId);
+            }
+
+            // Write selected cipher suite
+            Write(Context.Negotiating.Cipher.Code);
+
+            // Write selected compression method
+            WriteByte((byte) Context.CompressionMethod);
+        }
+
+        #endregion
+    }
 }

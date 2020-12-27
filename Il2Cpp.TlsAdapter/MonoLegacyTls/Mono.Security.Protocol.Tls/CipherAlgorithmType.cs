@@ -29,17 +29,17 @@ namespace Mono.Security.Protocol.Tls
 #if INSIDE_SYSTEM
 	internal
 #else
-	[Serializable]
-	public
+    [Serializable]
+    public
 #endif
-	enum CipherAlgorithmType
-	{
-		Des,
-		None,
-		Rc2,
-		Rc4,
-		Rijndael,
-		SkipJack,
-		TripleDes
-	}
+        enum CipherAlgorithmType
+    {
+        Des,
+        None,
+        Rc2,
+        Rc4,
+        Rijndael,
+        SkipJack,
+        TripleDes
+    }
 }

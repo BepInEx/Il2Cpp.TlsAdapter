@@ -29,13 +29,13 @@ namespace Mono.Security.Protocol.Tls
 #if INSIDE_SYSTEM
 	internal
 #else
-	[Serializable]
-	public
+    [Serializable]
+    public
 #endif
-	enum HashAlgorithmType
-	{
-		Md5,
-		None,
-		Sha1
-	}
+        enum HashAlgorithmType
+    {
+        Md5,
+        None,
+        Sha1
+    }
 }
