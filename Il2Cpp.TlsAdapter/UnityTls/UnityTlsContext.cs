@@ -63,13 +63,6 @@ namespace Mono.Unity
                 max = UnityTlsConversions.GetMaxProtocol(EnabledProtocols)
             };
 
-            if (protocolRange.max < protocolRange.min)
-            {
-                var tmp = protocolRange.max;
-                protocolRange.max = protocolRange.min;
-                protocolRange.min = tmp;
-            }
-
             readCallback = ReadCallback;
             writeCallback = WriteCallback;
             var callbacks = new UnityTls.unitytls_tlsctx_callbacks

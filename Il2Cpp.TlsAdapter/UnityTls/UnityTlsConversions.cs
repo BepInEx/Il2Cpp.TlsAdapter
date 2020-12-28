@@ -19,7 +19,7 @@ namespace Mono.Unity
                 return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_1;
             if (protocols.HasFlag(SslProtocols.Tls12))
                 return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_2;
-            return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_2; // Behavior as in AppleTlsContext
+            return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_0; // Default to lowest range
         }
 
         public static UnityTls.unitytls_protocol GetMaxProtocol(SslProtocols protocols)
@@ -30,7 +30,7 @@ namespace Mono.Unity
                 return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_1;
             if (protocols.HasFlag(SslProtocols.Tls))
                 return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_0;
-            return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_0; // Behavior as in AppleTlsContext
+            return UnityTls.unitytls_protocol.UNITYTLS_PROTOCOL_TLS_1_2; // Default to highest range
         }
 
         public static TlsProtocols ConvertProtocolVersion(UnityTls.unitytls_protocol protocol)
