@@ -1,10 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <PackageId>BepInEx.Il2Cpp.TlsAdapter</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>BepInEx</Authors>
+        <Company>BepInEx</Company>
+        <PackageTags>BepInEx;Il2Cpp;TLS;mono;Unity</PackageTags>
+        <Description>
+            Implements common Mono TLS providers for modding Unity games which use Il2Cpp runtime.
+            This allows to use HTTPS the same way you'd do it in a normal Unity game using Mono runtime.
+        </Description>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <RepositoryUrl>https://github.com/BepInEx/Il2Cpp.TlsAdapter</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/BepInEx/Il2Cpp.TlsAdapter</PackageProjectUrl>
         <TargetFramework>net472</TargetFramework>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <LangVersion>8</LangVersion>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>AnyCPU</Platforms>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\LICENSE" Pack="true" PackagePath="" />
+    </ItemGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -37,6 +58,10 @@
 
     <ItemGroup>
         <PackageReference Include="HarmonyX" Version="2.3.1" IncludeAssets="compile" />
+        <PackageReference Include="NuGet.Build.Tasks.Pack" Version="5.9.0-preview.2">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
 </Project>
